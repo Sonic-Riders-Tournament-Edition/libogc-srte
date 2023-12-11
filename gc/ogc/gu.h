@@ -363,6 +363,9 @@ void ps_guVecCross(const guVector *a, const guVector *b, guVector *axb);
 void ps_guVecMultiply(const Mtx mt, const guVector *src, guVector *dst);
 void ps_guVecMultiplySR(const Mtx mt, const guVector *src, guVector *dst);
 f32 ps_guVecDotProduct(const guVector *a, const guVector *b);
+f32 ps_guVecMag(const guVector *v);
+f32 ps_guVecSquareMag(const guVector *v);
+f32 ps_guVecDistance(const guVector *a, const guVector *b);
 #endif	//GEKKO
 
 void c_guQuatAdd(const guQuaternion *a,const guQuaternion *b,guQuaternion *ab);
@@ -415,11 +418,19 @@ void ps_guMtxRotRad( Mtx mt, const char axis, f32 rad);
 void ps_guMtxRotTrig( Mtx mt, const char axis, f32 sinA, f32 cosA);
 void ps_guMtxRotAxisRad( Mtx mt, guVector *axis, f32 tmp0);
 void ps_guMtxReflect( Mtx m, const guVector *p, const guVector *n);
+void ps_guMtxQuat(Mtx m, const guQuaternion *a);
+void ps_guMtxMultVec(const Mtx m, const guVector *src, guVector *dst);
+void ps_guMtxMultVecSR(const Mtx m, const guVector *src, guVector *dst);
 #endif	//GEKKO
 
 void guMtx44Identity(Mtx44 mt);
 void guMtx44Copy(const Mtx44 src,Mtx44 dst);
 u32 guMtx44Inverse(const Mtx44 src,Mtx44 inv);
+
+#ifdef GEKKO
+void ps_guMtx44Concat(const Mtx44 a, const Mtx44 b, Mtx44 dst);
+void ps_guMtx44MultVec(const Mtx44 m, const guVector *src, guVector *dst);
+#endif
 
 #ifdef MTX_USE_C
 
@@ -467,6 +478,9 @@ u32 guMtx44Inverse(const Mtx44 src,Mtx44 inv);
 #define guVecCross				ps_guVecCross
 #define guVecMultiplySR			ps_guVecMultiplySR
 #define guVecDotProduct			ps_guVecDotProduct
+#define guVecMag           ps_guVecMag
+#define guVecSquareMag     ps_guVecSquareMag
+#define guVecDistance      ps_guVecDistance
 
 #define guQuatAdd				ps_guQuatAdd
 #define guQuatSub				ps_guQuatSub
@@ -490,6 +504,12 @@ u32 guMtx44Inverse(const Mtx44 src,Mtx44 inv);
 #define guMtxRotTrig			ps_guMtxRotTrig
 #define guMtxRotAxisRad			ps_guMtxRotAxisRad
 #define guMtxReflect			ps_guMtxReflect
+#define guMtxQuat				ps_guMtxQuat
+#define guMtxMultVec       ps_guMtxMultVec
+#define guMtxMultVecSR     ps_guMtxMultVecSR
+
+#define guMtx44Concat      ps_guMtx44Concat
+#define guMtx44MultVec     ps_guMtx44MultVec
 
 #endif //MTX_USE_PS
 

@@ -207,6 +207,8 @@ GXRModeObj * VIDEO_GetPreferredMode(GXRModeObj *mode);
  */
 u32 VIDEO_GetVideoScanMode(void);
 
+u32 VIDEO_GetDTVStatus(void);
+
 #ifdef __cplusplus
    }
 #endif /* __cplusplus */

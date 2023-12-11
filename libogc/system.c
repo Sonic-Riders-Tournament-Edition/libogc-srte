@@ -215,10 +215,20 @@ extern int __libogc_nanosleep(const struct timespec *tb, struct timespec *rem);
 extern u64 gettime(void);
 extern void settime(u64);
 
+#if defined(HW_DOLRIDERS)
+void *__gxregs;
+#else
 extern u8 __gxregs[];
+#endif
+
 extern u8 __text_start[];
 extern u8 __isIPL[];
-extern u8 __Arena1Lo[], __Arena1Hi[];
+extern u8 __Arena1Lo[];
+#if defined(HW_DOLRIDERS)
+void* __Arena1Hi;
+#else
+extern u8 __Arena1Hi[];
+#endif
 #if defined(HW_RVL)
 extern u8 __Arena2Lo[], __Arena2Hi[];
 extern u8 __ipcbufferLo[], __ipcbufferHi[];
@@ -467,8 +477,6 @@ void * __attribute__ ((weak)) __myArena1Hi = 0;
 
 static void __lowmem_init(void)
 {
-	u32 *_gx = (u32*)__gxregs;
-
 #if defined(HW_DOL)
 	void *ram_start = (void*)0x80000000;
 	void *ram_end = (void*)(0x80000000|SYSMEM1_SIZE);
@@ -477,21 +485,30 @@ static void __lowmem_init(void)
 	void *arena_start = (void*)0x80003F00;
 #endif
 
-	memset(_gx,0,2048);
+#if defined(HW_DOLRIDERS)
+	__gxregs = (void*)(*(u32*)(0x80000038) - 2048);
+#endif
+
+#if defined(HW_DOLRIDERS)
+	memset(__gxregs,0,2048);
+#else
+	memset(__gxregs,0,2048);
+#endif
 	memset(arena_start,0,0x100);
-	if ( __argvArena1Lo == (u8*)0xdeadbeef ) __argvArena1Lo = __Arena1Lo;
-	if (__myArena1Lo == 0) __myArena1Lo = __argvArena1Lo;
-	if (__myArena1Hi == 0) __myArena1Hi = __Arena1Hi;
 
 #if defined(HW_DOL)
+#if !defined(HW_DOLRIDERS)
 	memset(ram_start,0,0x100);
+#endif
 	*((u32*)(ram_start+0x20))	= 0x0d15ea5e;   // magic word "disease"
 	*((u32*)(ram_start+0x24))	= 1;            // version
 	*((u32*)(ram_start+0x28))	= SYSMEM1_SIZE;	// physical memory size
 	*((u32*)(ram_start+0x2C))	= 1 + ((*(u32*)0xCC00302c)>>28);
 
 	*((u32*)(ram_start+0x30))	= (u32)__myArena1Lo;
+#if !defined(HW_DOLRIDERS)
 	*((u32*)(ram_start+0x34))	= (u32)__myArena1Hi;
+#endif
 
 	*((u32*)(ram_start+0xEC))	= (u32)ram_end;	// ram_end (??)
 	*((u32*)(ram_start+0xF0))	= SYSMEM1_SIZE;	// simulated memory size
@@ -505,11 +522,13 @@ static void __lowmem_init(void)
 #endif
 
 	DCFlushRangeNoSync(arena_start, 0x100);
-	DCFlushRangeNoSync(_gx, 2048);
+#if defined(HW_DOLRIDERS)
+	DCFlushRangeNoSync(__gxregs, 2048);
+#else
+	DCFlushRangeNoSync(__gxregs, 2048);
+#endif
 	_sync();
 
-	SYS_SetArenaLo((void*)__myArena1Lo);
-	SYS_SetArenaHi((void*)__myArena1Hi);
 #if defined(HW_RVL)
 	SYS_SetArena2Lo((void*)__Arena2Lo);
 	SYS_SetArena2Hi((void*)__Arena2Hi);
@@ -1052,10 +1071,20 @@ void SYS_Init(void)
 
 	_CPU_ISR_Disable(level);
 
-	__SYS_PreInit();
-
 	if(system_initialized) return;
 	system_initialized = 1;
+
+#if defined(HW_DOLRIDERS)
+	__Arena1Hi = (void*)(*(u32*)(0x80000038) - 2048);
+#endif
+	if ( __argvArena1Lo == (u8*)0xdeadbeef ) __argvArena1Lo = __Arena1Lo;
+	if (__myArena1Lo == 0) __myArena1Lo = __argvArena1Lo;
+	if (__myArena1Hi == 0) __myArena1Hi = __Arena1Hi;
+
+	SYS_SetArenaLo((void*)__myArena1Lo);
+	SYS_SetArenaHi((void*)__myArena1Hi);
+
+	__SYS_PreInit();
 
 	_V_EXPORTNAME();
 
@@ -1924,4 +1953,9 @@ u64 SYS_Time(void)
 	now += *_bootTime;
 	_CPU_ISR_Restore(level);
 	return now;
+}
+
+void PPCSync(void)
+{
+	ppcsync();
 }

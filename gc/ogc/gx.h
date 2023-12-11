@@ -4111,6 +4111,24 @@ u16 GX_GetTexObjWidth(const GXTexObj* obj);
 void GX_GetTexObjAll(const GXTexObj* obj, void** image_ptr, u16* width, u16* height, u8* format, u8* wrap_s, u8* wrap_t, u8* mipmap);
 
 /*!
+ * \fn void GX_GetTexObjLODAll(const GXTexObj *obj, s32* min_filt, s32* mag_filt, f32* min_lod, f32* max_lod, f32* lod_bias, u8* bias_clamp, u8* do_edge_lod, s32* max_aniso);
+ * \brief Returns the LOD-related parameters described by a texture object. Texture objects are used to describe all the parameters associated with a texture, including size, format, wrap modes, filter modes, etc. Texture objects are initialized using either GXInitTexObj() or, for color index format textures, GXInitTexObjCI(). The LOD-related parameters are set using GXInitTexObjLOD().
+ *
+ * \param[in] obj ptr to a texture object
+ * \param[out] min_filt Returns the minification filter from the texture object.
+ * \param[out] mag_filt Returns the magnification filter.
+ * \param[out] min_lod Returns the minimum LOD bound.
+ * \param[out] max_lod Returns the maximum LOD bound.
+ * \param[out] lod_bias Returns the LOD bias control.
+ * \param[out] bias_clamp Returns the LOD bias clamping parameter.
+ * \param[out] do_edge_lod Returns whether or not "edge LOD" has been enabled.
+ * \param[out] max_aniso Returns the anisotropic filtering setting.
+ *
+ * \return none
+ */
+void GX_GetTexObjLODAll(const GXTexObj *obj, s32* min_filt, s32* mag_filt, f32* min_lod, f32* max_lod, f32* lod_bias, u8* bias_clamp, u8* do_edge_lod, s32* max_aniso);
+
+/*!
  * \fn u32 GX_GetTexBufferSize(u16 wd,u16 ht,u32 fmt,u8 mipmap,u8 maxlod)
  * \brief Returns the amount of memory in bytes needed to store a texture of the given size and \a fmt.
  *

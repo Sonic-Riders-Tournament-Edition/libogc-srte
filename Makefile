@@ -99,6 +99,11 @@ MACHDEP		+=	-DHW_DOL
 INCLUDES	+=	-I$(BASEDIR)/cube
 endif
 
+ifeq ($(PLATFORM),cuberiders)
+MACHDEP		+=	-DHW_DOL -DHW_DOLRIDERS
+INCLUDES	+=	-I$(BASEDIR)/cuberiders
+endif
+
 CFLAGS		:= $(FALSE_POSITIVES) -g -O2 -fno-strict-aliasing -Wall $(MACHDEP) $(INCLUDES)
 ASFLAGS		:= $(MACHDEP) -mregnames -D_LANGUAGE_ASSEMBLY $(INCLUDES)
 
@@ -190,7 +195,7 @@ WIIKEYBLIBOBJ	:=	usbkeyboard.o keyboard.o ukbdmap.o wskbdutil.o
 
 
 
-all: wii cube
+all: cuberiders
 
 #---------------------------------------------------------------------------------
 wii: gc/ogc/libversion.h
@@ -209,6 +214,15 @@ cube: gc/ogc/libversion.h
 	@[ -d $(DEPS)/cube ] || mkdir -p $(DEPS)/cube
 	@[ -d cube ] || mkdir -p cube
 	@$(MAKE) PLATFORM=cube libs -C cube -f $(CURDIR)/Makefile
+
+#---------------------------------------------------------------------------------
+cuberiders: gc/ogc/libversion.h
+#---------------------------------------------------------------------------------
+	@[ -d $(INCDIR) ] || mkdir -p $(INCDIR)
+	@[ -d $(LIBS)/cuberiders ] || mkdir -p $(LIBS)/cuberiders
+	@[ -d $(DEPS)/cuberiders ] || mkdir -p $(DEPS)/cuberiders
+	@[ -d cuberiders ] || mkdir -p cuberiders
+	@$(MAKE) PLATFORM=cuberiders libs -C cuberiders -f $(CURDIR)/Makefile
 
 
 #---------------------------------------------------------------------------------
@@ -283,7 +297,7 @@ $(BTELIB).a: $(BTEOBJ)
 $(WIIUSELIB).a: $(WIIUSEOBJ)
 #---------------------------------------------------------------------------------
 
-.PHONY: libs wii cube install-headers install dist docs
+.PHONY: libs wii cube cuberiders install-headers install dist docs
 
 #---------------------------------------------------------------------------------
 install-headers:
@@ -330,6 +344,9 @@ LIBRARIES	:=	$(OGCLIB).a  $(MODLIB).a $(MADLIB).a $(DBLIB).a \
 ifeq ($(PLATFORM),cube)
 LIBRARIES	+=	$(BBALIB).a
 endif
+ifeq ($(PLATFORM),cuberiders)
+LIBRARIES	+=	$(BBALIB).a
+endif
 ifeq ($(PLATFORM),wii)
 LIBRARIES	+=	$(BTELIB).a $(WIIUSELIB).a $(DILIB).a $(WIIKEYBLIB).a
 endif
@@ -341,7 +358,7 @@ libs: $(LIBRARIES)
 #---------------------------------------------------------------------------------
 clean:
 #---------------------------------------------------------------------------------
-	rm -fr wii cube
+	rm -fr wii cube cuberiders
 	rm -fr $(DEPS)
 	rm -fr $(LIBS)
 	rm -fr $(INCDIR)

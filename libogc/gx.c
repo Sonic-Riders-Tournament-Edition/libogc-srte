@@ -127,9 +127,15 @@ static const u32 _gxtexregionaddrtable[48] =
 };
 #endif
 
+static const u8 _gxfiltconv[8] = {0x00,0x02,0x04,0x00,0x01,0x03,0x05,0x00};
 
+#if defined(HW_DOLRIDERS)
+extern struct __gx_regdef *__gxregs;
+#else
 extern u8 __gxregs[];
-static struct __gx_regdef *__gx = (struct __gx_regdef*)__gxregs;
+struct __gx_regdef *__gx = (struct __gx_regdef*)__gxregs;
+#endif
+
 static u8 _gx_saved_data[STRUCT_REGDEF_SIZE] ATTRIBUTE_ALIGN(32);
 
 static s32 __gx_onreset(s32 final);
@@ -168,30 +174,45 @@ static __inline__ void __GX_ResetWriteGatherPipe(void)
 
 static __inline__ void __GX_FifoLink(u8 enable)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	__gx->cpCRreg = ((__gx->cpCRreg&~0x10)|(_SHIFTL(enable,4,1)));
 	_cpReg[1] = __gx->cpCRreg;
 }
 
 static __inline__ void __GX_WriteFifoIntReset(u8 inthi,u8 intlo)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	__gx->cpCLreg = ((__gx->cpCLreg&~0x03)|(_SHIFTL(intlo,1,1))|(inthi&1));
 	_cpReg[2] = __gx->cpCLreg;
 }
 
 static __inline__ void __GX_WriteFifoIntEnable(u8 inthi, u8 intlo)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	__gx->cpCRreg = ((__gx->cpCRreg&~0x0C)|(_SHIFTL(intlo,3,1))|(_SHIFTL(inthi,2,1)));
 	_cpReg[1] = __gx->cpCRreg;
 }
 
 static __inline__ void __GX_FifoReadEnable(void)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	__gx->cpCRreg = ((__gx->cpCRreg&~0x01)|1);
 	_cpReg[1] = __gx->cpCRreg;
 }
 
 static __inline__ void __GX_FifoReadDisable(void)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	__gx->cpCRreg = ((__gx->cpCRreg&~0x01)|0);
 	_cpReg[1] = __gx->cpCRreg;
 }
@@ -236,6 +257,9 @@ static u32 __GX_CPGPLinkCheck(void)
 
 static void __GX_InitRevBits(void)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	s32 i;
 
 	i=0;
@@ -341,6 +365,9 @@ static void __GX_CleanGPFifo(void)
 	u32 level;
 	struct __gxfifo *gpfifo = (struct __gxfifo*)&_gpfifo;
 	struct __gxfifo *cpufifo = (struct __gxfifo*)&_cpufifo;
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 
 	if(!_gxgpfifoready) return;
 
@@ -405,6 +432,9 @@ static void __GXUnderflowHandler(void)
 
 static void __GXCPInterruptHandler(u32 irq,void *ctx)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	__gx->cpSRreg = _cpReg[0];
 
 	if((__gx->cpCRreg&0x08) && (__gx->cpSRreg&0x02))
@@ -549,6 +579,9 @@ static void __GX_SetTmemConfig(u8 nr)
 #if defined(HW_RVL)
 static GXTexRegion* __GXDefTexRegionCallback(GXTexObj *obj,u8 mapid)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	u32 fmt,mipmap;
 	GXTexRegion *ret = NULL;
 
@@ -568,6 +601,9 @@ static GXTexRegion* __GXDefTexRegionCallback(GXTexObj *obj,u8 mapid)
 #else
 static GXTexRegion* __GXDefTexRegionCallback(GXTexObj *obj,u8 mapid)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	u32 fmt;
 	u32 idx;
 	static u32 regionA = 0;
@@ -588,6 +624,9 @@ static GXTexRegion* __GXDefTexRegionCallback(GXTexObj *obj,u8 mapid)
 
 static GXTlutRegion* __GXDefTlutRegionCallback(u32 tlut_name)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	return &__gx->tlutRegion[tlut_name];
 }
 
@@ -741,11 +780,17 @@ static void __GX_InitGX(void)
 
 static void __GX_FlushTextureState(void)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	GX_LOAD_BP_REG(__gx->tevIndMask);
 }
 
 static void __GX_XfVtxSpecs(void)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	u32 xfvtxspecs = 0;
 	u32 nrms,texs,cols;
 
@@ -773,6 +818,9 @@ static void __GX_XfVtxSpecs(void)
 
 static void __GX_SetMatrixIndex(u32 mtx)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	if(mtx<5) {
 		GX_LOAD_CP_REG(0x30,__gx->mtxIdxLo);
 		GX_LOAD_XF_REG(0x1018,__gx->mtxIdxLo);
@@ -784,6 +832,9 @@ static void __GX_SetMatrixIndex(u32 mtx)
 
 static void __GX_SendFlushPrim(void)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	u32 tmp,tmp2,cnt;
 
 	tmp = (__gx->xfFlush*__gx->xfFlushExp);
@@ -818,6 +869,9 @@ static void __GX_SendFlushPrim(void)
 
 static void __GX_SetVCD(void)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	GX_LOAD_CP_REG(0x50,__gx->vcdLo);
 	GX_LOAD_CP_REG(0x60,__gx->vcdHi);
 	__GX_XfVtxSpecs();
@@ -825,6 +879,9 @@ static void __GX_SetVCD(void)
 
 static void __GX_SetVAT(void)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	u8 setvtx = 0;
 	s32 i;
 
@@ -841,6 +898,9 @@ static void __GX_SetVAT(void)
 
 static void __SetSURegs(u8 texmap,u8 texcoord)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	u32 reg;
 	u16 wd,ht;
 	u8 wrap_s,wrap_t;
@@ -862,6 +922,9 @@ static void __SetSURegs(u8 texmap,u8 texcoord)
 
 static void __GX_SetSUTexRegs(void)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	u32 i;
 	u32 indtev,dirtev;
 	u8 texcoord,texmap;
@@ -918,12 +981,18 @@ static void __GX_SetSUTexRegs(void)
 
 static void __GX_SetGenMode(void)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	GX_LOAD_BP_REG(__gx->genMode);
 	__gx->xfFlush = 0;
 }
 
 static void __GX_UpdateBPMask(void)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 #if defined(HW_DOL)
 	u32 i;
 	u32 nbmp,nres;
@@ -962,12 +1031,18 @@ static void __GX_UpdateBPMask(void)
 
 static void __GX_SetIndirectMask(u32 mask)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	__gx->tevIndMask = ((__gx->tevIndMask&~0xff)|(mask&0xff));
 	GX_LOAD_BP_REG(__gx->tevIndMask);
 }
 
 static void __GX_SetTexCoordGen(void)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	u32 i,mask;
 	u32 texcoord;
 
@@ -989,6 +1064,9 @@ static void __GX_SetTexCoordGen(void)
 
 static void __GX_SetChanColor(void)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	if(__gx->dirtyState&0x0100)
 		GX_LOAD_XF_REG(0x100a,__gx->chnAmbColor[0]);
 	if(__gx->dirtyState&0x0200)
@@ -1001,6 +1079,9 @@ static void __GX_SetChanColor(void)
 
 static void __GX_SetChanCntrl(void)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	u32 i,chan,mask;
 
 	if(__gx->dirtyState&0x01000000) GX_LOAD_XF_REG(0x1009,(_SHIFTR(__gx->genMode,4,3)));
@@ -1019,6 +1100,9 @@ static void __GX_SetChanCntrl(void)
 
 static void __GX_SetDirtyState(void)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	if(__gx->dirtyState&0x0001) {
 		__GX_SetSUTexRegs();
 	}
@@ -1069,6 +1153,9 @@ static u32 __GX_GetNumXfbLines(u16 efbHeight,u32 yscale)
 
 GXFifoObj* GX_Init(void *base,u32 size)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	s32 i,re0,re1;
 #if defined(HW_RVL)
 	u32 tmem;
@@ -1083,7 +1170,9 @@ GXFifoObj* GX_Init(void *base,u32 size)
 	LWP_InitQueue(&_gxwaitfinish);
 	SYS_RegisterResetFunc(&__gx_resetinfo);
 
+
 	memset(__gxregs,0,STRUCT_REGDEF_SIZE);
+
 
 	__GX_FifoInit();
 	GX_InitFifoBase(&_gxfifoobj,base,size);
@@ -1580,6 +1669,9 @@ void GX_RestoreWriteGatherPipe(void)
 
 void GX_Flush(void)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	if(__gx->dirtyState)
 		__GX_SetDirtyState();
 
@@ -1597,6 +1689,9 @@ void GX_Flush(void)
 
 void GX_EnableBreakPt(void *break_pt)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	u32 level = 0;
 	_CPU_ISR_Disable(level);
 	__GX_FifoReadDisable();
@@ -1611,6 +1706,9 @@ void GX_EnableBreakPt(void *break_pt)
 
 void GX_DisableBreakPt(void)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	u32 level = 0;
 	_CPU_ISR_Disable(level);
 	__gx->cpCRreg = (__gx->cpCRreg&~0x22);
@@ -1733,6 +1831,9 @@ GXBreakPtCallback GX_SetBreakPtCallback(GXBreakPtCallback cb)
 
 void GX_PixModeSync(void)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	GX_LOAD_BP_REG(__gx->peCntrl);
 }
 
@@ -1743,6 +1844,9 @@ void GX_TexModeSync(void)
 
 void GX_SetMisc(u32 token,u32 value)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	u32 cnt;
 
 	if(token==GX_MT_XF_FLUSH) {
@@ -1900,12 +2004,18 @@ void GX_SetCopyClear(GXColor color,u32 zvalue)
 
 void GX_SetCopyClamp(u8 clamp)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	__gx->dispCopyCntrl = (__gx->dispCopyCntrl&~1)|(clamp&1);
 	__gx->dispCopyCntrl = (__gx->dispCopyCntrl&~2)|(clamp&2);
 }
 
 void GX_SetDispCopyGamma(u8 gamma)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	__gx->dispCopyCntrl = (__gx->dispCopyCntrl&~0x180)|(_SHIFTL(gamma,7,2));
 }
 
@@ -1974,11 +2084,17 @@ void GX_SetCopyFilter(u8 aa,u8 sample_pattern[12][2],u8 vf,u8 vfilter[7])
 
 void GX_SetDispCopyFrame2Field(u8 mode)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	__gx->dispCopyCntrl = (__gx->dispCopyCntrl&~0x3000)|(_SHIFTL(mode,12,2));
 }
 
 u32 GX_SetDispCopyYScale(f32 yscale)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	u32 ht,yScale = 0;
 
 	yScale = ((u32)(256.0f/yscale))&0x1ff;
@@ -1991,12 +2107,18 @@ u32 GX_SetDispCopyYScale(f32 yscale)
 
 void GX_SetDispCopyDst(u16 wd,u16 ht)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	__gx->dispCopyDst = (__gx->dispCopyDst&~0x3ff)|(_SHIFTR(wd,4,10));
 	__gx->dispCopyDst = (__gx->dispCopyDst&~0xff000000)|(_SHIFTL(0x4d,24,8));
 }
 
 void GX_SetDispCopySrc(u16 left,u16 top,u16 wd,u16 ht)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	__gx->dispCopyTL = (__gx->dispCopyTL&~0x00ffffff)|XY(left,top);
 	__gx->dispCopyTL = (__gx->dispCopyTL&~0xff000000)|(_SHIFTL(0x49,24,8));
 	__gx->dispCopyWH = (__gx->dispCopyWH&~0x00ffffff)|XY((wd-1),(ht-1));
@@ -2005,6 +2127,9 @@ void GX_SetDispCopySrc(u16 left,u16 top,u16 wd,u16 ht)
 
 void GX_CopyDisp(void *dest,u8 clear)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	u8 clflag;
 	u32 val;
 
@@ -2047,6 +2172,9 @@ void GX_CopyDisp(void *dest,u8 clear)
 
 void GX_CopyTex(void *dest,u8 clear)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	u8 clflag;
 	u32 val;
 
@@ -2092,6 +2220,9 @@ void GX_CopyTex(void *dest,u8 clear)
 
 void GX_SetTexCopySrc(u16 left,u16 top,u16 wd,u16 ht)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	__gx->texCopyTL = (__gx->texCopyTL&~0x00ffffff)|XY(left,top);
 	__gx->texCopyTL = (__gx->texCopyTL&~0xff000000)|(_SHIFTL(0x49,24,8));
 	__gx->texCopyWH = (__gx->texCopyWH&~0x00ffffff)|XY((wd-1),(ht-1));
@@ -2100,6 +2231,9 @@ void GX_SetTexCopySrc(u16 left,u16 top,u16 wd,u16 ht)
 
 void GX_SetTexCopyDst(u16 wd,u16 ht,u32 fmt,u8 mipmap)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	u8 lfmt = fmt&0xf;
 	u32 xtiles,ytiles,zplanes;
 
@@ -2127,6 +2261,9 @@ void GX_ClearBoundingBox(void)
 
 void GX_BeginDispList(void *list,u32 size)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	struct __gxfifo *fifo;
 
 	if(__gx->dirtyState)
@@ -2153,6 +2290,9 @@ void GX_BeginDispList(void *list,u32 size)
 
 u32 GX_EndDispList(void)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	u32 level;
 	u8 wrap = 0;
 
@@ -2162,6 +2302,7 @@ u32 GX_EndDispList(void)
 	if(__gx->saveDLctx) {
 		_CPU_ISR_Disable(level);
 		memcpy(__gxregs,_gx_saved_data,STRUCT_REGDEF_SIZE);
+
 		_CPU_ISR_Restore(level);
 	}
 
@@ -2175,6 +2316,9 @@ u32 GX_EndDispList(void)
 
 void GX_CallDispList(void *list,u32 nbytes)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	if(__gx->dirtyState)
 		__GX_SetDirtyState();
 
@@ -2188,6 +2332,9 @@ void GX_CallDispList(void *list,u32 nbytes)
 
 void GX_SetChanCtrl(s32 channel,u8 enable,u8 ambsrc,u8 matsrc,u8 litmask,u8 diff_fn,u8 attn_fn)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	u32 reg,difffn = (attn_fn==GX_AF_SPEC)?GX_DF_NONE:diff_fn;
 	u32 val = (matsrc&1)|(_SHIFTL(enable,1,1))|(_SHIFTL(litmask,2,4))|(_SHIFTL(ambsrc,6,1))|(_SHIFTL(difffn,7,2))|(_SHIFTL(((GX_AF_NONE-attn_fn)>0),9,1))|(_SHIFTL((attn_fn>0),10,1))|(_SHIFTL((_SHIFTR(litmask,4,4)),11,4));
 
@@ -2206,6 +2353,9 @@ void GX_SetChanCtrl(s32 channel,u8 enable,u8 ambsrc,u8 matsrc,u8 litmask,u8 diff
 
 void GX_SetChanAmbColor(s32 channel,GXColor color)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	u32 reg,val = (_SHIFTL(color.r,24,8))|(_SHIFTL(color.g,16,8))|(_SHIFTL(color.b,8,8))|0x00;
 	switch(channel) {
 		case GX_COLOR0:
@@ -2242,6 +2392,9 @@ void GX_SetChanAmbColor(s32 channel,GXColor color)
 
 void GX_SetChanMatColor(s32 channel,GXColor color)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	u32 reg,val = (_SHIFTL(color.r,24,8))|(_SHIFTL(color.g,16,8))|(_SHIFTL(color.b,8,8))|0x00;
 	switch(channel) {
 		case GX_COLOR0:
@@ -2290,6 +2443,9 @@ void GX_SetArray(u32 attr,void *ptr,u8 stride)
 
 static __inline__ void __SETVCDATTR(u8 attr,u8 type)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	switch(attr) {
 		case GX_VA_PTNMTXIDX:
 			__gx->vcdLo = (__gx->vcdLo&~0x1)|(type&0x1);
@@ -2364,12 +2520,18 @@ static __inline__ void __SETVCDATTR(u8 attr,u8 type)
 
 void GX_SetVtxDesc(u8 attr,u8 type)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	__SETVCDATTR(attr,type);
 	__gx->dirtyState |= 0x0008;
 }
 
 void GX_SetVtxDescv(GXVtxDesc *attr_list)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	u32 i;
 
 	if(!attr_list) return;
@@ -2384,6 +2546,9 @@ void GX_SetVtxDescv(GXVtxDesc *attr_list)
 
 void GX_GetVtxDescv(GXVtxDesc *attr_list)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	u32 count;
 
 	// Clear everything first
@@ -2528,6 +2693,9 @@ void GX_GetVtxDescv(GXVtxDesc *attr_list)
 
 static __inline__ void __SETVCDFMT(u8 vtxfmt,u32 vtxattr,u32 comptype,u32 compsize,u32 frac)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	u8 vat = (vtxfmt&7);
 
 	if(vtxattr==GX_VA_POS && (comptype==GX_POS_XY || comptype==GX_POS_XYZ)
@@ -2617,6 +2785,9 @@ static __inline__ void __SETVCDFMT(u8 vtxfmt,u32 vtxattr,u32 comptype,u32 compsi
 
 void GX_SetVtxAttrFmt(u8 vtxfmt,u32 vtxattr,u32 comptype,u32 compsize,u32 frac)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	__SETVCDFMT(vtxfmt,vtxattr,comptype,compsize,frac);
 	__gx->VATTable |= (1<<vtxfmt);
 	__gx->dirtyState |= 0x0010;
@@ -2624,6 +2795,9 @@ void GX_SetVtxAttrFmt(u8 vtxfmt,u32 vtxattr,u32 comptype,u32 compsize,u32 frac)
 
 void GX_SetVtxAttrFmtv(u8 vtxfmt,GXVtxAttrFmt *attr_list)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	u32 i;
 
 	for(i=0;i<GX_MAX_VTXATTRFMT_LISTSIZE;i++) {
@@ -2637,6 +2811,9 @@ void GX_SetVtxAttrFmtv(u8 vtxfmt,GXVtxAttrFmt *attr_list)
 
 void GX_Begin(u8 primitve,u8 vtxfmt,u16 vtxcnt)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	u8 reg = primitve|(vtxfmt&7);
 
 	if(__gx->dirtyState)
@@ -2653,6 +2830,9 @@ void GX_SetTexCoordGen(u16 texcoord,u32 tgen_typ,u32 tgen_src,u32 mtxsrc)
 
 void GX_SetTexCoordGen2(u16 texcoord,u32 tgen_typ,u32 tgen_src,u32 mtxsrc,u32 normalize,u32 postmtx)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	u32 txc;
 	u32 texcoords;
 	u8 vtxrow,stq;
@@ -2926,12 +3106,18 @@ void GX_LoadTexMtxIdx(u16 mtxidx,u32 texidx,u8 type)
 
 void GX_SetCurrentMtx(u32 mtx)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	__gx->mtxIdxLo = (__gx->mtxIdxLo&~0x3f)|(mtx&0x3f);
 	__gx->dirtyState |= 0x04000000;
 }
 
 void GX_SetNumTexGens(u32 nr)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	__gx->genMode = (__gx->genMode&~0xf)|(nr&0xf);
 	__gx->dirtyState |= 0x02000004;
 }
@@ -2943,6 +3129,9 @@ void GX_InvVtxCache(void)
 
 void GX_SetZMode(u8 enable,u8 func,u8 update_enable)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	__gx->peZMode = (__gx->peZMode&~0x1)|(enable&1);
 	__gx->peZMode = (__gx->peZMode&~0xe)|(_SHIFTL(func,1,3));
 	__gx->peZMode = (__gx->peZMode&~0x10)|(_SHIFTL(update_enable,4,1));
@@ -3040,6 +3229,22 @@ void GX_GetTexObjAll(const GXTexObj *obj, void** image_ptr, u16* width, u16* hei
 	*wrap_t = _SHIFTR(ptr->tex_filt & 0x0c, 2, 2);
 	*mipmap = ptr->tex_flag & 0x01;
 }
+
+void GX_GetTexObjLODAll(const GXTexObj *obj, s32* min_filt, s32* mag_filt, f32* min_lod,
+                     	f32* max_lod, f32* lod_bias, u8* bias_clamp, u8* do_edge_lod, 
+						s32* max_aniso)
+{
+	const struct __gx_texobj *ptr = (const struct __gx_texobj*)obj;
+	*min_filt = _gxfiltconv[(ptr->tex_filt >> 5) & 0x7];
+	*mag_filt = (ptr->tex_filt >> 4) & 0x1;
+	*min_lod = (f32)(ptr->tex_lod & 0xFF) * 0.0625F;
+	*max_lod = (f32)((ptr->tex_lod >> 8) & 0xFF) * 0.0625F;
+	*lod_bias = (f32)((s8)((ptr->tex_filt >> 9) & 0xFF)) * 0.03125F;
+	*bias_clamp = (ptr->tex_filt >> 21) & 0x1;
+	*do_edge_lod = !(bool)((ptr->tex_filt >> 8) & 0x1);
+	*max_aniso = (ptr->tex_filt >> 19) & 0x3;
+}
+
 u32 GX_GetTexBufferSize(u16 wd,u16 ht,u32 fmt,u8 mipmap,u8 maxlod)
 {
 	u32 xshift,yshift,xtiles,ytiles,bitsize,size;
@@ -3419,6 +3624,9 @@ void GX_LoadTexObj(GXTexObj *obj,u8 mapid)
 
 void GX_LoadTexObjPreloaded(GXTexObj *obj,GXTexRegion *region,u8 mapid)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	u8 type;
 	struct __gx_tlutregion *tlut = NULL;
 	struct __gx_texobj *ptr = (struct __gx_texobj*)obj;
@@ -3642,6 +3850,9 @@ void GX_LoadTlut(GXTlutObj *obj,u32 tlut_name)
 
 void GX_SetTexCoordScaleManually(u8 texcoord,u8 enable,u16 ss,u16 ts)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	u32 reg;
 
 	__gx->texCoordManually = (__gx->texCoordManually&~(_SHIFTL(1,texcoord,1)))|(_SHIFTL(enable,texcoord,1));
@@ -3657,6 +3868,9 @@ void GX_SetTexCoordScaleManually(u8 texcoord,u8 enable,u16 ss,u16 ts)
 
 void GX_SetTexCoordCylWrap(u8 texcoord,u8 s_enable,u8 t_enable)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	u32 reg;
 
 	reg = (texcoord&0x7);
@@ -3671,6 +3885,9 @@ void GX_SetTexCoordCylWrap(u8 texcoord,u8 s_enable,u8 t_enable)
 
 void GX_SetTexCoordBias(u8 texcoord,u8 s_enable,u8 t_enable)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	u32 reg;
 
 	reg = (texcoord&0x7);
@@ -3711,6 +3928,9 @@ GXTlutRegionCallback GX_SetTlutRegionCallback(GXTlutRegionCallback cb)
 
 void GX_SetBlendMode(u8 type,u8 src_fact,u8 dst_fact,u8 op)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	__gx->peCMode0 = (__gx->peCMode0&~0x1);
 	if(type==GX_BM_BLEND || type==GX_BM_SUBTRACT) __gx->peCMode0 |= 0x1;
 
@@ -3729,6 +3949,9 @@ void GX_SetBlendMode(u8 type,u8 src_fact,u8 dst_fact,u8 op)
 
 void GX_ClearVtxDesc(void)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	__gx->vcdNrms = 0;
 	__gx->vcdClear = ((__gx->vcdClear&~0x0600)|0x0200);
 	__gx->vcdLo = __gx->vcdHi = 0;
@@ -3737,6 +3960,9 @@ void GX_ClearVtxDesc(void)
 
 void GX_SetLineWidth(u8 width,u8 fmt)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	__gx->lpWidth = (__gx->lpWidth&~0xff)|(width&0xff);
 	__gx->lpWidth = (__gx->lpWidth&~0x70000)|(_SHIFTL(fmt,16,3));
 	GX_LOAD_BP_REG(__gx->lpWidth);
@@ -3744,6 +3970,9 @@ void GX_SetLineWidth(u8 width,u8 fmt)
 
 void GX_SetPointSize(u8 width,u8 fmt)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	__gx->lpWidth = (__gx->lpWidth&~0xFF00)|(_SHIFTL(width,8,8));
 	__gx->lpWidth = (__gx->lpWidth&~0x380000)|(_SHIFTL(fmt,19,3));
 	GX_LOAD_BP_REG(__gx->lpWidth);
@@ -3847,6 +4076,9 @@ void GX_SetTevOp(u8 tevstage,u8 mode)
 
 void GX_SetTevColorIn(u8 tevstage,u8 a,u8 b,u8 c,u8 d)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	u32 reg = (tevstage&0xf);
 	__gx->tevColorEnv[reg] = (__gx->tevColorEnv[reg]&~0xF000)|(_SHIFTL(a,12,4));
 	__gx->tevColorEnv[reg] = (__gx->tevColorEnv[reg]&~0xF00)|(_SHIFTL(b,8,4));
@@ -3858,6 +4090,9 @@ void GX_SetTevColorIn(u8 tevstage,u8 a,u8 b,u8 c,u8 d)
 
 void GX_SetTevAlphaIn(u8 tevstage,u8 a,u8 b,u8 c,u8 d)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	u32 reg = (tevstage&0xf);
 	__gx->tevAlphaEnv[reg] = (__gx->tevAlphaEnv[reg]&~0xE000)|(_SHIFTL(a,13,3));
 	__gx->tevAlphaEnv[reg] = (__gx->tevAlphaEnv[reg]&~0x1C00)|(_SHIFTL(b,10,3));
@@ -3869,6 +4104,9 @@ void GX_SetTevAlphaIn(u8 tevstage,u8 a,u8 b,u8 c,u8 d)
 
 void GX_SetTevColorOp(u8 tevstage,u8 tevop,u8 tevbias,u8 tevscale,u8 clamp,u8 tevregid)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	/* set tev op add/sub*/
 	u32 reg = (tevstage&0xf);
 	__gx->tevColorEnv[reg] = (__gx->tevColorEnv[reg]&~0x40000)|(_SHIFTL(tevop,18,1));
@@ -3887,6 +4125,9 @@ void GX_SetTevColorOp(u8 tevstage,u8 tevop,u8 tevbias,u8 tevscale,u8 clamp,u8 te
 
 void GX_SetTevAlphaOp(u8 tevstage,u8 tevop,u8 tevbias,u8 tevscale,u8 clamp,u8 tevregid)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	/* set tev op add/sub*/
 	u32 reg = (tevstage&0xf);
 	__gx->tevAlphaEnv[reg] = (__gx->tevAlphaEnv[reg]&~0x40000)|(_SHIFTL(tevop,18,1));
@@ -3905,6 +4146,9 @@ void GX_SetTevAlphaOp(u8 tevstage,u8 tevop,u8 tevbias,u8 tevscale,u8 clamp,u8 te
 
 void GX_SetCullMode(u8 mode)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
     static const u8 cm2hw[] = { 0, 2, 1, 3 };
 
 	__gx->genMode = (__gx->genMode&~0xC000)|(_SHIFTL(cm2hw[mode],14,2));
@@ -3913,6 +4157,9 @@ void GX_SetCullMode(u8 mode)
 
 void GX_SetCoPlanar(u8 enable)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	__gx->genMode = (__gx->genMode&~0x80000)|(_SHIFTL(enable,19,1));
 	GX_LOAD_BP_REG(0xFE080000);
 	GX_LOAD_BP_REG(__gx->genMode);
@@ -3920,6 +4167,9 @@ void GX_SetCoPlanar(u8 enable)
 
 void GX_EnableTexOffsets(u8 coord,u8 line_enable,u8 point_enable)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	u32 reg = (coord&0x7);
 	__gx->suSsize[reg] = (__gx->suSsize[reg]&~0x40000)|(_SHIFTL(line_enable,18,1));
 	__gx->suSsize[reg] = (__gx->suSsize[reg]&~0x80000)|(_SHIFTL(point_enable,19,1));
@@ -3933,6 +4183,9 @@ void GX_SetClipMode(u8 mode)
 
 void GX_SetScissor(u32 xOrigin,u32 yOrigin,u32 wd,u32 ht)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	u32 xo = xOrigin+0x156;
 	u32 yo = yOrigin+0x156;
 	u32 nwd = xo+(wd-1);
@@ -3958,12 +4211,18 @@ void GX_SetScissorBoxOffset(s32 xoffset,s32 yoffset)
 
 void GX_SetNumChans(u8 num)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	__gx->genMode = (__gx->genMode&~0x70)|(_SHIFTL(num,4,3));
 	__gx->dirtyState |= 0x01000004;
 }
 
 void GX_SetTevOrder(u8 tevstage,u8 texcoord,u32 texmap,u8 color)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	u8 colid;
 	u32 texm,texc,tmp;
 	u32 reg = 3+(_SHIFTR(tevstage,1,3));
@@ -4009,6 +4268,9 @@ void GX_SetTevOrder(u8 tevstage,u8 texcoord,u32 texmap,u8 color)
 
 void GX_SetNumTevStages(u8 num)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	__gx->genMode = (__gx->genMode&~0x3C00)|(_SHIFTL((num-1),10,4));
 	__gx->dirtyState |= 0x0004;
 }
@@ -4022,6 +4284,9 @@ void GX_SetAlphaCompare(u8 comp0,u8 ref0,u8 aop,u8 comp1,u8 ref1)
 
 void GX_SetTevKColorSel(u8 tevstage,u8 sel)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	u32 reg = (_SHIFTR(tevstage,1,3));
 
 	if(tevstage&1)
@@ -4033,6 +4298,9 @@ void GX_SetTevKColorSel(u8 tevstage,u8 sel)
 
 void GX_SetTevKAlphaSel(u8 tevstage,u8 sel)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	u32 reg = (_SHIFTR(tevstage,1,3));
 
 	if(tevstage&1)
@@ -4044,6 +4312,9 @@ void GX_SetTevKAlphaSel(u8 tevstage,u8 sel)
 
 void GX_SetTevSwapMode(u8 tevstage,u8 ras_sel,u8 tex_sel)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	u32 reg = (tevstage&0xf);
 	__gx->tevAlphaEnv[reg] = (__gx->tevAlphaEnv[reg]&~0x3)|(ras_sel&0x3);
 	__gx->tevAlphaEnv[reg] = (__gx->tevAlphaEnv[reg]&~0xC)|(_SHIFTL(tex_sel,2,2));
@@ -4052,6 +4323,9 @@ void GX_SetTevSwapMode(u8 tevstage,u8 ras_sel,u8 tex_sel)
 
 void GX_SetTevSwapModeTable(u8 swapid,u8 r,u8 g,u8 b,u8 a)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	u32 regA = 0+(_SHIFTL(swapid,1,3));
 	u32 regB = 1+(_SHIFTL(swapid,1,3));
 
@@ -4077,6 +4351,9 @@ void GX_SetTevDirect(u8 tevstage)
 
 void GX_SetNumIndStages(u8 nstages)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	__gx->genMode = (__gx->genMode&~0x70000)|(_SHIFTL(nstages,16,3));
 	__gx->dirtyState |= 0x0006;
 }
@@ -4150,6 +4427,9 @@ void GX_SetTevIndRepeat(u8 tevstage)
 
 void GX_SetIndTexCoordScale(u8 indtexid,u8 scale_s,u8 scale_t)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	switch(indtexid) {
 		case GX_INDTEXSTAGE0:
 			__gx->tevRasOrder[0] = (__gx->tevRasOrder[0]&~0x0f)|(scale_s&0x0f);
@@ -4355,24 +4635,36 @@ void GX_SetFogColor(GXColor color)
 
 void GX_SetColorUpdate(u8 enable)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	__gx->peCMode0 = (__gx->peCMode0&~0x8)|(_SHIFTL(enable,3,1));
 	GX_LOAD_BP_REG(__gx->peCMode0);
 }
 
 void GX_SetAlphaUpdate(u8 enable)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	__gx->peCMode0 = (__gx->peCMode0&~0x10)|(_SHIFTL(enable,4,1));
 	GX_LOAD_BP_REG(__gx->peCMode0);
 }
 
 void GX_SetZCompLoc(u8 before_tex)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	__gx->peCntrl = (__gx->peCntrl&~0x40)|(_SHIFTL(before_tex,6,1));
 	GX_LOAD_BP_REG(__gx->peCntrl);
 }
 
 void GX_SetPixelFmt(u8 pix_fmt,u8 z_fmt)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	u8 ms_en = 0;
 	u32 realfmt[8] = {0,1,2,3,4,4,4,5};
 
@@ -4393,12 +4685,18 @@ void GX_SetPixelFmt(u8 pix_fmt,u8 z_fmt)
 
 void GX_SetDither(u8 dither)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	__gx->peCMode0 = (__gx->peCMode0&~0x4)|(_SHIFTL(dither,2,1));
 	GX_LOAD_BP_REG(__gx->peCMode0);
 }
 
 void GX_SetDstAlpha(u8 enable,u8 a)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	__gx->peCMode1 = (__gx->peCMode1&~0xff)|(a&0xff);
 	__gx->peCMode1 = (__gx->peCMode1&~0x100)|(_SHIFTL(enable,8,1));
 	GX_LOAD_BP_REG(__gx->peCMode1);
@@ -4414,6 +4712,9 @@ void GX_SetFieldMask(u8 even_mask,u8 odd_mask)
 
 void GX_SetFieldMode(u8 field_mode,u8 half_aspect_ratio)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	__gx->lpWidth = (__gx->lpWidth&~0x400000)|(_SHIFTL(half_aspect_ratio,22,1));
 	GX_LOAD_BP_REG(__gx->lpWidth);
 
@@ -4526,6 +4827,9 @@ void GX_PokeZMode(u8 comp_enable,u8 func,u8 update_enable)
 
 void GX_SetIndTexOrder(u8 indtexstage,u8 texcoord,u8 texmap)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	switch(indtexstage) {
 		case GX_INDTEXSTAGE0:
 			__gx->tevRasOrder[2] = (__gx->tevRasOrder[2]&~0x7)|(texmap&0x7);
@@ -4843,6 +5147,9 @@ void GX_InitLightSpot(GXLightObj *lit_obj,f32 cut_off,u8 spotfn)
 
 void GX_SetGPMetric(u32 perf0,u32 perf1)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	// check last setted perf0 counters
 	if(__gx->perf0Mode>=GX_PERF0_TRIANGLES && __gx->perf0Mode<GX_PERF0_QUAD_0CVG)
 		GX_LOAD_BP_REG(0x23000000);
@@ -5109,6 +5416,9 @@ void GX_GetGPStatus(u8 *overhi,u8 *underlow,u8 *readIdle,u8 *cmdIdle,u8 *brkpt)
 
 void GX_ReadGPMetric(u32 *cnt0,u32 *cnt1)
 {
+#if defined(HW_DOLRIDERS)
+	struct __gx_regdef *__gx = __gxregs;
+#endif
 	u32 tmp,reg1,reg2;
 
 	reg1 = (_SHIFTL(_cpReg[33],16,16))|(_cpReg[32]&0xffff);

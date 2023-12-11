@@ -82,6 +82,9 @@ struct _reent* __SYSCALL(getreent)()
 	if ( _thr_executing == NULL || _thr_executing->libc_reent == NULL) return _GLOBAL_REENT;
 
 	return _thr_executing->libc_reent;
+
+	// used for rand, libc's reent is broken due to clashing with other SDK, so use global reent instead
+	//return _GLOBAL_REENT;
 }
 
 /*

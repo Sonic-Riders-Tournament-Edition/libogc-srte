@@ -347,6 +347,11 @@ void DSP_Init(void)
 	_CPU_ISR_Restore(level);
 }
 
+u32 DSP_CheckInit(void)
+{
+	return __dsp_inited;
+}
+
 DSPCallback DSP_RegisterCallback(DSPCallback usr_cb)
 {
 	u32 level;

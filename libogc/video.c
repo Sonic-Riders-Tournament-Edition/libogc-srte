@@ -2980,3 +2980,14 @@ u32 VIDEO_GetVideoScanMode(void)
 	_CPU_ISR_Restore(level);
 	return mode;
 }
+
+u32 VIDEO_GetDTVStatus(void)
+{
+	u32 level;
+	u32 status;
+
+	_CPU_ISR_Disable(level);
+	status = _viReg[55];
+	_CPU_ISR_Restore(level);
+	return status;
+}

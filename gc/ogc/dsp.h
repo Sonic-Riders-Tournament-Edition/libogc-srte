@@ -145,6 +145,13 @@ struct _dsp_task {
 */
 void DSP_Init(void);
 
+/*! \fn u32 DSP_CheckInit(void)
+\brief Check if the DSP subsystem was initialized.
+
+\return 1: dsp is initialized, 0: dsp is not initialized
+*/
+u32 DSP_CheckInit(void);
+
 
 /*! \fn u32 DSP_CheckMailTo(void)
 \brief Check if mail was sent to DSP
