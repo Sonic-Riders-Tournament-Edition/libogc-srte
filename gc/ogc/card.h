@@ -659,13 +659,21 @@ s32 CARD_SetGamecode(const char *gamecode);
 */
 s32 CARD_GetSerialNo(s32 chn,u32 *serial1,u32 *serial2);
 
-/*! \fn s32 CARD_GetFreeBlocks(s32 chn, u16* freeblocks)
-\brief Get the free blocks in memory card
+/*! \fn s32 CARD_GetFreeBlocks(s32 chn, u32* bytesNotUsed, u32* filesNotUsed)
+\brief Get the number of free bytes and the number of free directory entries in the memory card.
 \param[in] chn CARD slot.
-\param[in] freeblocks pointer to receive freeblocks value.
-\return \ref card_errors "card error codes" or free blocks
+\param[out] bytesNotUsed pointer to save the number of free bytes.
+\param[out] filesNotUsed pointer to save the number of free directory entries.
+\return \ref card_errors "card error codes"
 */
-s32 CARD_GetFreeBlocks(s32 chn, u16* freeblocks);
+s32 CARD_GetFreeBlocks(s32 chn, u32* bytesNotUsed, u32* filesNotUsed);
+
+/*! \fn u32 CARD_GetXferredBytes(s32 chn)
+\brief Returns the total number of bytes read from or written to memory cards through the specified channel.
+\param[in] chn CARD slot.
+\return Total number of bytes read from or written to the memory cards through the specified channel (value can be rounded-up).
+*/
+u32 CARD_GetXferredBytes(s32 chn);
 
 #ifdef __cplusplus
    }

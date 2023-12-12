@@ -130,6 +130,10 @@ distribution.
 
 #define DVD_SPINMOTOR_MASK				0x0000ff00
 
+// fst flags
+#define DVD_FST_FILE 					0x00
+#define DVD_FST_DIRECTORY 				0x01
+
 #define cpu_to_le32(x)					(((x>>24)&0x000000ff) | ((x>>8)&0x0000ff00) | ((x<<8)&0x00ff0000) | ((x<<24)&0xff000000))
 #define dvd_may_retry(s)				(DVD_STATUS(s) == DVD_STATUS_READY || DVD_STATUS(s) == DVD_STATUS_DISK_ID_NOT_READ)
 
@@ -149,6 +153,20 @@ typedef struct _dvdcmds {
 	u32 len;
 	s64 offset;
 } dvdcmds;
+
+typedef struct _dvdfst {
+	u32 flag : 8; 			// dir or file
+	u32 fileNameOffset : 24;
+	union {
+		u32 fileOffset; 	// for files
+		u32 parentOffset; 	// for dirs
+	};
+	union {
+		u32 fileLength; 	// for files
+		u32 numEntries; 	// for root dir entry
+		u32 nextOffset; 	// for dirs
+	};
+} dvdfst;
 
 static u32 __dvd_initflag = 0;
 static u32 __dvd_stopnextint = 0;
@@ -199,6 +217,8 @@ static dvdstatecb __dvd_laststate = NULL;
 static dvdcmdblk *__dvd_executing = NULL;
 static void *__dvd_usrdata = NULL;
 static dvddiskid *__dvd_diskID = (dvddiskid*)0x80000000;
+static dvdfst *__dvd_fst_start = NULL;
+static const char *__dvd_fst_filename_table = NULL;
 
 static lwp_queue __dvd_waitingqueue[4];
 static dvdcmdl __dvd_cmdlist[4];
@@ -2612,17 +2632,21 @@ void DVD_Init(void)
 #ifdef _DVD_DEBUG
 	printf("DVD_Init()\n");
 #endif
-	if(!__dvd_initflag) {
-		__dvd_initflag = 1;
-		__dvd_clearwaitingqueue();
-		__DVDInitWA();
+	if(__dvd_initflag != 0) return;
 
-		IRQ_Request(IRQ_PI_DI,__DVDInterruptHandler,NULL);
-		__UnmaskIrq(IRQMASK(IRQ_PI_DI));
+	__dvd_initflag = 1;
 
-		SYS_CreateAlarm(&__dvd_timeoutalarm);
-		LWP_InitQueue(&__dvd_wait_queue);
-	}
+	__dvd_fst_start = (dvdfst*)*(u32*)(0x80000038);
+	__dvd_fst_filename_table = (const char*)(__dvd_fst_start + __dvd_fst_start->numEntries);
+
+	__dvd_clearwaitingqueue();
+	__DVDInitWA();
+
+	IRQ_Request(IRQ_PI_DI,__DVDInterruptHandler,NULL);
+	__UnmaskIrq(IRQMASK(IRQ_PI_DI));
+
+	SYS_CreateAlarm(&__dvd_timeoutalarm);
+	LWP_InitQueue(&__dvd_wait_queue);
 }
 
 u32 DVD_SetAutoInvalidation(u32 auto_inv)
@@ -2694,3 +2718,34 @@ const DISC_INTERFACE __io_gcdvd = {
 	dvdio_ClearStatus,
 	dvdio_Shutdown
 };
+
+s32 DVD_ConvertPathToEntrynum(const char *path)
+{
+	dvdfst *fst = __dvd_fst_start + 1;
+	u32 entries = __dvd_fst_start->numEntries;
+
+	for (u32 i = 1; i < entries; i++, fst++)
+	{
+		const char *entryFileName = __dvd_fst_filename_table + fst->fileNameOffset;
+		if (strcmp(path, entryFileName) == 0)
+		{
+			return i;
+		}
+	}
+
+	return -1;
+}
+
+bool DVD_Open(const char *path, dvdfileinfo *fileInfo)
+{
+	s32 entryNum = DVD_ConvertPathToEntrynum(path);
+	if (entryNum == -1)
+	{
+		return false;
+	}
+
+	dvdfst *fst = __dvd_fst_start + entryNum;
+	fileInfo->addr = fst->fileOffset;
+	fileInfo->len = fst->fileLength;
+	return true;
+}

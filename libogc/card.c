@@ -3277,20 +3277,45 @@ s32 CARD_GetSerialNo(s32 chn,u32 *serial1,u32 *serial2)
 	return __card_putcntrlblock(card,ret);
 }
 
-s32 CARD_GetFreeBlocks(s32 chn, u16* freeblocks)
+s32 CARD_GetFreeBlocks(s32 chn, u32* bytesNotUsed, u32* filesNotUsed)
 {
 	s32 ret;
+	u32 level;
+
 	card_block *card = NULL;
 	struct card_bat *fatblock = NULL;
+	struct card_dat *dirblock = NULL;
 	
 	if(chn<EXI_CHANNEL_0 || chn>=EXI_CHANNEL_2) return CARD_ERROR_NOCARD;
-	if(freeblocks == NULL) return CARD_ERROR_FATAL_ERROR;
+	if(bytesNotUsed == NULL) return CARD_ERROR_FATAL_ERROR;
+	if(filesNotUsed == NULL) return CARD_ERROR_FATAL_ERROR;
 	if((ret=__card_getcntrlblock(chn,&card))<0) return ret;
 
 	fatblock = __card_getbatblock(card);
-	*freeblocks = fatblock->freeblocks;
+	dirblock = __card_getdirblock(card);
+
+	_CPU_ISR_Disable(level);
+
+	*bytesNotUsed = card->cmd_len * fatblock->freeblocks;
+	*filesNotUsed = 0;
+
+	for (u32 i = 0; i < CARD_MAXFILES; i++)
+	{
+		if (dirblock->entries[i].filename[0] == 0xFF)
+		{
+			*filesNotUsed += 1;
+		}
+	}
 
 	ret = __card_putcntrlblock(card,CARD_ERROR_READY);
 
+	_CPU_ISR_Restore(level);
+
 	return ret;
+}
+
+u32 CARD_GetXferredBytes(s32 chn)
+{
+	card_block *card = &cardmap[chn];
+	return card->transfer_cnt;
 }

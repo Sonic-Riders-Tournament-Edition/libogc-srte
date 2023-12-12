@@ -265,6 +265,18 @@ lwp_t LWP_GetSelf(void)
 	return ret;
 }
 
+s32 LWP_GetThreadPriority(lwp_t thethread)
+{
+	lwp_cntrl *lwp_thread;
+
+	if(thethread==LWP_THREAD_NULL) thethread = LWP_GetSelf();
+
+	lwp_thread = __lwp_cntrl_open(thethread);
+	if(!lwp_thread) return -1;
+
+	return lwp_thread->cur_prio;
+}
+
 void LWP_SetThreadPriority(lwp_t thethread,u32 prio)
 {
 	lwp_cntrl *lwp_thread;
@@ -416,5 +428,27 @@ void LWP_ThreadSignal(lwpq_t thequeue)
 	if(!tq) return;
 
 	__lwp_threadqueue_dequeue(&tq->tqueue);
+	__lwp_thread_dispatchenable();
+}
+
+void LWP_DisableScheduler()
+{
+	__lwp_thread_dispatchdisable();
+}
+
+void LWP_EnableScheduler()
+{
+	__lwp_thread_dispatchenable();
+}
+
+void LWP_CancelThread(lwp_t thethread) 
+{
+	lwp_cntrl *lwp_thread;
+
+	lwp_thread = __lwp_cntrl_open(thethread);
+	if (!lwp_thread) return;
+
+	__lwp_thread_dispatchdisable();
+	__lwp_thread_close(lwp_thread);
 	__lwp_thread_dispatchenable();
 }

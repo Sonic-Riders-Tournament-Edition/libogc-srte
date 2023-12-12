@@ -141,6 +141,12 @@ struct _dvddiskid {
  */
 typedef struct _dvdcmdblk dvdcmdblk;
 
+/*!
+ * \typedef struct _dvdfileinfo dvdfileinfo
+ * \brief forward typedef for struct _dvdfileinfo
+ */
+typedef struct _dvdfileinfo dvdfileinfo;
+
 
 /*!
  * \typedef void (*dvdcbcallback)(s32 result,dvdcmdblk *block)
@@ -193,13 +199,6 @@ struct _dvddrvinfo {
 	u32 rel_date;
 	u8  pad[24];
 };
-
-
-/*!
- * \typedef struct _dvdfileinfo dvdfileinfo
- * \brief forward typedef for struct _dvdfileinfo
- */
-typedef struct _dvdfileinfo dvdfileinfo;
 
 
 /*!
@@ -355,6 +354,8 @@ s32 DVD_ReadDiskID(dvdcmdblk *block,dvddiskid *id,dvdcbcallback cb);
 u32 DVD_SetAutoInvalidation(u32 auto_inv);
 dvddiskid* DVD_GetCurrentDiskID(void);
 dvddrvinfo* DVD_GetDriveInfo(void);
+s32 DVD_ConvertPathToEntrynum(const char *path);
+bool DVD_Open(const char *path, dvdfileinfo *fileInfo);
 
 #define DVD_SetUserData(block, data) ((block)->usrdata = (data))
 #define DVD_GetUserData(block)       ((block)->usrdata)
