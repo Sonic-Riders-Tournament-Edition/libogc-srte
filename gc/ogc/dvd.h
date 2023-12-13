@@ -342,7 +342,8 @@ s32 DVD_SpinUpDrive(dvdcmdblk *block);
 s32 DVD_SpinUpDriveAsync(dvdcmdblk *block,dvdcbcallback cb);
 s32 DVD_Inquiry(dvdcmdblk *block,dvddrvinfo *info);
 s32 DVD_InquiryAsync(dvdcmdblk *block,dvddrvinfo *info,dvdcbcallback cb);
-s32 DVD_ReadPrio(dvdcmdblk *block,void *buf,u32 len,s64 offset,s32 prio);
+s32 DVD_ReadPrio(dvdfileinfo *info,void *buf,u32 len,u32 offset,s32 prio);
+s32 DVD_ReadAbsPrio(dvdcmdblk *block,void *buf,u32 len,s64 offset,s32 prio);
 s32 DVD_ReadAbsAsyncPrio(dvdcmdblk *block,void *buf,u32 len,s64 offset,dvdcbcallback cb,s32 prio);
 s32 DVD_ReadAbsAsyncForBS(dvdcmdblk *block,void *buf,u32 len,s64 offset,dvdcbcallback cb);
 s32 DVD_SeekPrio(dvdcmdblk *block,s64 offset,s32 prio);
@@ -356,6 +357,12 @@ dvddiskid* DVD_GetCurrentDiskID(void);
 dvddrvinfo* DVD_GetDriveInfo(void);
 s32 DVD_ConvertPathToEntrynum(const char *path);
 bool DVD_Open(const char *path, dvdfileinfo *fileInfo);
+bool DVD_CancelAsync(dvdcmdblk *block, dvdcbcallback cb);
+s32 DVD_Cancel(dvdcmdblk *block);
+u32 DVD_GetTransferredSize(dvdfileinfo *info);
+bool DVD_ReadAsyncPrio(dvdfileinfo *info, void *buf, u32 length, u32 offset, dvdcbcallback cb, s32 prio);
+bool DVD_Close(dvdfileinfo *info);
+bool DVD_CheckDisk(void);
 
 #define DVD_SetUserData(block, data) ((block)->usrdata = (data))
 #define DVD_GetUserData(block)       ((block)->usrdata)

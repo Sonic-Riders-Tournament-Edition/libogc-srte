@@ -37,6 +37,7 @@ distribution.
 #include <unistd.h>
 #include <stdio.h>
 #include <string.h>
+#include <ctype.h>
 #include "asm.h"
 #include "processor.h"
 #include "cache.h"
@@ -513,6 +514,13 @@ static dvdcmdblk* __dvd_popwaitingqueue(void)
 	}
 	_CPU_ISR_Restore(level);
 	return NULL;
+}
+
+static void __dvd_dequeuewaitingqueue(dvdcmdblk *block)
+{
+	if (block->node.next != NULL && block->node.prev != NULL) {
+		__lwp_queue_extractI(&block->node);
+	}
 }
 
 static void __dvd_timeouthandler(syswd_t alarm,void *cbarg)
@@ -1003,6 +1011,11 @@ static void __dvd_motorcntrlsynccb(s32 result,dvdcmdblk *block)
 }
 
 static void __dvd_setgcmsynccb(s32 result,dvdcmdblk *block)
+{
+	LWP_ThreadBroadcast(__dvd_wait_queue);
+}
+
+static void __dvd_cancelsynccb(s32 result,dvdcmdblk *block)
 {
 	LWP_ThreadBroadcast(__dvd_wait_queue);
 }
@@ -2204,6 +2217,21 @@ static s32 DVD_LowRequestAudioStatus(u32 subcmd,dvdcallbacklow cb)
 	return 1;
 }
 
+static void DVD_LowBreak()
+{
+	__dvd_stopnextint = 1;
+	__dvd_breaking = 1;
+}
+
+static dvdcallbacklow DVD_LowClearCallback()
+{
+	_diReg[1] = 0;
+	dvdcallbacklow old = __dvd_callback;
+	__dvd_waitcoverclose = 0;
+	__dvd_callback = NULL;
+	return old;
+}
+
 //special, only used in bios replacement. therefor only there extern'd
 s32 __DVDAudioBufferConfig(dvdcmdblk *block,u32 enable,u32 size,dvdcbcallback cb)
 {
@@ -2311,12 +2339,37 @@ s32 DVD_Inquiry(dvdcmdblk *block,dvddrvinfo *info)
 	return ret;
 }
 
-s32 DVD_ReadPrio(dvdcmdblk *block,void *buf,u32 len,s64 offset,s32 prio)
+s32 DVD_ReadPrio(dvdfileinfo *info,void *buf,u32 len,u32 offset,s32 prio)
 {
 	u32 level;
 	s32 state,ret;
 #ifdef _DVD_DEBUG
-	printf("DVD_ReadPrio(%p,%p,%d,%d,%d)\n",block,buf,len,offset,prio);
+	printf("DVD_ReadPrio(%p,%p,%d,%d,%d)\n",info,buf,len,offset,prio);
+#endif
+	if(offset>=0 && offset<8511160320LL) {
+		ret = DVD_ReadAbsAsyncPrio(&info->block,buf,len,info->addr + offset,__dvd_readsynccb,prio);
+		if(!ret) return -1;
+
+		_CPU_ISR_Disable(level);
+		do {
+			state = info->block.state;
+			if(state==0) ret = info->block.txdsize;
+			else if(state==-1) ret = -1;
+			else if(state==10) ret = -3;
+			else LWP_ThreadSleep(__dvd_wait_queue);
+		} while(state!=0 && state!=-1 && state!=10);
+		_CPU_ISR_Restore(level);
+		return ret;
+	}
+	return -1;
+}
+
+s32 DVD_ReadAbsPrio(dvdcmdblk *block,void *buf,u32 len,s64 offset,s32 prio)
+{
+	u32 level;
+	s32 state,ret;
+#ifdef _DVD_DEBUG
+	printf("DVD_ReadAbsPrio(%p,%p,%d,%d,%d)\n",block,buf,len,offset,prio);
 #endif
 	if(offset>=0 && offset<8511160320LL) {
 		ret = DVD_ReadAbsAsyncPrio(block,buf,len,offset,__dvd_readsynccb,prio);
@@ -2687,7 +2740,7 @@ static bool dvdio_ReadSectors(sec_t sector,sec_t numSectors,void *buffer)
 {
 	dvdcmdblk blk;
 
-	if(DVD_ReadPrio(&blk, buffer, numSectors<<11, sector << 11, 2) <= 0)
+	if(DVD_ReadAbsPrio(&blk, buffer, numSectors<<11, sector << 11, 2) <= 0)
 		return false;
 
 	return true;
@@ -2721,13 +2774,25 @@ const DISC_INTERFACE __io_gcdvd = {
 
 s32 DVD_ConvertPathToEntrynum(const char *path)
 {
+	if (strlen(path) > 100) return -1;
+
+	char searchPath[100];
+	strcpy(searchPath, path);
+	for (char *p = searchPath; *p; ++p) *p = tolower(*p);
+	
 	dvdfst *fst = __dvd_fst_start + 1;
 	u32 entries = __dvd_fst_start->numEntries;
 
 	for (u32 i = 1; i < entries; i++, fst++)
 	{
 		const char *entryFileName = __dvd_fst_filename_table + fst->fileNameOffset;
-		if (strcmp(path, entryFileName) == 0)
+		if (strlen(entryFileName) > 100) continue;
+
+		char entryPath[100];
+		strcpy(entryPath, entryFileName);
+		for (char *p = entryPath; *p; ++p) *p = tolower(*p);
+
+		if (strcmp(searchPath, entryPath) == 0)
 		{
 			return i;
 		}
@@ -2739,13 +2804,206 @@ s32 DVD_ConvertPathToEntrynum(const char *path)
 bool DVD_Open(const char *path, dvdfileinfo *fileInfo)
 {
 	s32 entryNum = DVD_ConvertPathToEntrynum(path);
-	if (entryNum == -1)
-	{
-		return false;
-	}
+	if (entryNum == -1) return false;
 
 	dvdfst *fst = __dvd_fst_start + entryNum;
+
+	if (fst->flag == DVD_FST_DIRECTORY) return false;
+
 	fileInfo->addr = fst->fileOffset;
 	fileInfo->len = fst->fileLength;
+	fileInfo->cb = NULL;
+	fileInfo->block.state = DVD_STATE_END;
 	return true;
+}
+
+bool DVD_CancelAsync(dvdcmdblk *block, dvdcbcallback cb)
+{
+	u32 level;
+	_CPU_ISR_Disable(level);
+	
+	switch (block->state) {
+		case DVD_STATE_FATAL_ERROR:
+		case DVD_STATE_END:
+		case DVD_STATE_CANCELED:
+			if (cb) cb(DVD_ERROR_OK, block);
+			break;
+		case DVD_STATE_BUSY:
+			if (__dvd_canceling) {
+				_CPU_ISR_Restore(level);
+				return false;
+			}
+
+			__dvd_canceling = 1;
+			__dvd_cancelcallback = cb;
+
+			if (block->cmd == 4 || block->cmd == 1) {
+				DVD_LowBreak();
+			}
+			break;
+		case DVD_STATE_WAITING:
+			__dvd_dequeuewaitingqueue(block);
+			block->state = DVD_STATE_CANCELED;
+
+			if (block->cb) block->cb(DVD_ERROR_CANCELED, block);
+			if (cb) cb(DVD_ERROR_OK, block);
+			break;
+		case DVD_STATE_COVER_CLOSED:
+			switch (block->cmd) {
+				case 0xD:
+				case 0xF:
+				case 0x5:
+				case 0x4:
+					if (cb) cb(DVD_ERROR_OK, block);
+					break;
+				case 0x6 ... 0xC:
+				default:
+					if (__dvd_canceling) {
+						_CPU_ISR_Restore(level);
+						return false;
+					}
+
+					__dvd_canceling = 1;
+					__dvd_cancelcallback = cb;
+					break;
+			}
+			break;
+		case DVD_STATE_NO_DISK:
+		case DVD_STATE_COVER_OPEN:
+		case DVD_STATE_WRONG_DISK:
+		case DVD_STATE_MOTOR_STOPPED:
+		case DVD_STATE_RETRY:
+			if (DVD_LowClearCallback() == __dvd_statemotorstoppedcb) {
+				_CPU_ISR_Restore(level);
+				return false;
+			}
+
+			if (block->state == DVD_STATE_NO_DISK) __dvd_resumefromhere = 3;
+			if (block->state == DVD_STATE_COVER_OPEN) __dvd_resumefromhere = 4;
+			if (block->state == DVD_STATE_WRONG_DISK) __dvd_resumefromhere = 1;
+			if (block->state == DVD_STATE_RETRY) __dvd_resumefromhere = 2;
+			if (block->state == DVD_STATE_MOTOR_STOPPED) __dvd_resumefromhere = 7;
+
+			__dvd_executing = &__dvd_dummycmdblk;
+			block->state = DVD_STATE_CANCELED;
+
+			if (block->cb) block->cb(DVD_ERROR_CANCELED, block);
+			if (cb) cb(DVD_ERROR_OK, block);
+			__dvd_stateready();
+			break;
+		default:
+			break;
+	}
+
+	_CPU_ISR_Restore(level);
+	return true;
+}
+
+s32 DVD_Cancel(dvdcmdblk *block)
+{
+	bool ret = DVD_CancelAsync(block, &__dvd_cancelsynccb);
+	if (!ret) return -1;
+
+	u32 level;
+	_CPU_ISR_Disable(level);
+
+	while (true) {
+		s32 state = block->state;
+		switch (state) {
+			case DVD_STATE_FATAL_ERROR:
+			case DVD_STATE_END:
+			case DVD_STATE_CANCELED:
+				_CPU_ISR_Restore(level);
+				return 0;
+			case DVD_STATE_COVER_CLOSED:
+				if ((block->cmd - 4) <= 1 || block->cmd == 0xD || block->cmd == 0xF) {
+					_CPU_ISR_Restore(level);
+					return 0;
+				}
+				// fallthrough
+			default:
+				LWP_ThreadSleep(__dvd_wait_queue);
+				break;
+		}
+	}
+
+	_CPU_ISR_Restore(level);
+	return 0;
+}
+
+u32 DVD_GetTransferredSize(dvdfileinfo *info)
+{
+	switch (info->block.state) {
+		case DVD_STATE_WAITING:
+			return 0;
+		case DVD_STATE_BUSY:
+			return info->block.currtxsize - _diReg[6] + info->block.txdsize;
+		case DVD_STATE_FATAL_ERROR:
+		case DVD_STATE_CANCELED:
+		case DVD_STATE_RETRY:
+		default:
+			return info->block.txdsize;
+	}
+}
+
+bool DVD_ReadAsyncPrio(dvdfileinfo *info, void *buf, u32 length, u32 offset, dvdcbcallback cb, s32 prio)
+{
+	DVD_ReadAbsAsyncPrio(&info->block, buf, length, info->addr + offset, cb, prio);
+	return true;
+}
+
+bool DVD_Close(dvdfileinfo *info)
+{
+	DVD_Cancel(&info->block);
+	return true;
+}
+
+bool DVD_CheckDisk(void)
+{
+	u32 level;
+	_CPU_ISR_Disable(level);
+
+	s32 state;
+	bool ret;
+
+	if (__dvd_fatalerror) state = DVD_STATE_FATAL_ERROR;
+	else if (__dvd_pausingflag) state = DVD_STATE_IGNORED;
+	else if (__dvd_executing == NULL || 
+			 __dvd_executing == &__dvd_dummycmdblk) state = DVD_STATE_END;
+	else state = __dvd_executing->state;
+
+	switch (state) {
+		case DVD_STATE_BUSY:
+		case DVD_STATE_WAITING:
+		case 9:
+		case DVD_STATE_CANCELED:
+			ret = true;
+			break;
+		case DVD_STATE_FATAL_ERROR:
+		case DVD_STATE_COVER_CLOSED:
+		case DVD_STATE_NO_DISK:
+		case DVD_STATE_COVER_OPEN:
+		case DVD_STATE_WRONG_DISK:
+		case DVD_STATE_MOTOR_STOPPED:
+		case DVD_STATE_RETRY:
+		default:
+			ret = false;
+			break;
+		case DVD_STATE_END:
+		case DVD_STATE_IGNORED:
+			u32 diCVR = _diReg[1];
+			u32 interruptStatus = (diCVR >> 2) & 0x1;
+			u32 isCoverOpen = diCVR & 0x1;
+
+			if (interruptStatus || isCoverOpen) {
+				ret = false;
+				break;
+			}
+
+			ret = !(__dvd_resumefromhere == 0);
+			break;
+	}
+
+	_CPU_ISR_Restore(level);
+	return ret;
 }

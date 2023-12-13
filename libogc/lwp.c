@@ -274,7 +274,7 @@ s32 LWP_GetThreadPriority(lwp_t thethread)
 	lwp_thread = __lwp_cntrl_open(thethread);
 	if(!lwp_thread) return -1;
 
-	return lwp_thread->cur_prio;
+	return __lwp_priotocore(lwp_thread->cur_prio);
 }
 
 void LWP_SetThreadPriority(lwp_t thethread,u32 prio)
