@@ -40,55 +40,57 @@
 	.globl	ps_guMtxConcat
 	//r3 = mtxA, r4 = mtxB, r5 = mtxAB
 ps_guMtxConcat:
-	stwu		r1,-64(r1)
-	psq_l		A00_A01,0(r3),0,0
-	stfd		fr14,8(r1)
-	psq_l		B00_B01,0(r4),0,0
-	psq_l		B02_B03,8(r4),0,0
-	stfd		fr15,16(r1)
-	stfd		fr31,40(r1)
-	psq_l		B10_B11,16(r4),0,0
-	ps_muls0	D00_D01,B00_B01,A00_A01
-	psq_l		A10_A11,16(r3),0,0
-	ps_muls0	D02_D03,B02_B03,A00_A01
-	psq_l		UNIT01,Unit01@sdarel(r13),0,0
-	ps_muls0	D10_D11,B00_B01,A10_A11
-	psq_l		B12_B13,24(r4),0,0
-	ps_muls0	D12_D13,B02_B03,A10_A11
-	psq_l		A02_A03,8(r3),0,0
-	ps_madds1	D00_D01,B10_B11,A00_A01,D00_D01
-	psq_l		A12_A13,24(r3),0,0
-	ps_madds1	D10_D11,B10_B11,A10_A11,D10_D11
-	psq_l		B20_B21,32(r4),0,0
-	ps_madds1	D02_D03,B12_B13,A00_A01,D02_D03
-	psq_l		B22_B23,40(r4),0,0
-	ps_madds1	D12_D13,B12_B13,A10_A11,D12_D13
-	psq_l		A20_A21,32(r3),0,0
-	psq_l		A22_A23,40(r3),0,0
-	ps_madds0	D00_D01,B20_B21,A02_A03,D00_D01
-	ps_madds0	D02_D03,B22_B23,A02_A03,D02_D03
-	ps_madds0	D10_D11,B20_B21,A12_A13,D10_D11
-	ps_madds0	D12_D13,B22_B23,A12_A13,D12_D13
-	psq_st		D00_D01,0(r5),0,0
-	ps_muls0	D20_D21,B00_B01,A20_A21
-	ps_madds1	D02_D03,UNIT01,A02_A03,D02_D03
-	ps_muls0	D22_D23,B02_B03,A20_A21
-	psq_st		D10_D11,16(r5),0,0
-	ps_madds1	D12_D13,UNIT01,A12_A13,D12_D13
-	psq_st		D02_D03,8(r5),0,0
-	ps_madds1	D20_D21,B10_B11,A20_A21,D20_D21
-	ps_madds1	D22_D23,B12_B13,A20_A21,D22_D23
-	ps_madds0	D20_D21,B20_B21,A22_A23,D20_D21
-	lfd		fr14,8(r1)
-	psq_st		D12_D13,24(r5),0,0
-	ps_madds0	D22_D23,B22_B23,A22_A23,D22_D23
-	psq_st		D20_D21,32(r5),0,0
-	ps_madds1	D22_D23,UNIT01,A22_A23,D22_D23
-	lfd		fr15,16(r1)
-	psq_st		D22_D23,40(r5),0,0
-	lfd		fr31,40(r1)
-	addi		r1,r1,64
-	blr
+	stwu 	r1, -0x40(r1)
+	psq_l 		fr0, 0(r3), 0, 0
+	stfd 	fr14, 8(r1)
+	psq_l 		fr6, 0(r4), 0, 0
+	lis 	r6, Unit01@ha
+	psq_l 		fr7, 8(r4), 0, 0
+	stfd 	fr15, 0x10(r1)
+	addi 	r6, r6, Unit01@l
+	stfd 	fr31, 0x28(r1)
+	psq_l 		fr8, 16(r4), 0, 0
+	ps_muls0 	fr12, fr6, fr0
+	psq_l 		fr2, 16(r3), 0, 0
+	ps_muls0 	fr13, fr7, fr0
+	psq_l 		fr31, 0(r6), 0, 0
+	ps_muls0 	fr14, fr6, fr2
+	psq_l 		fr9, 24(r4), 0, 0
+	ps_muls0 	fr15, fr7, fr2
+	psq_l 		fr1, 8(r3), 0, 0
+	ps_madds1 	fr12, fr8, fr0, fr12
+	psq_l 		fr3, 24(r3), 0, 0
+	ps_madds1 	fr14, fr8, fr2, fr14
+	psq_l 		fr10, 32(r4), 0, 0
+	ps_madds1 	fr13, fr9, fr0, fr13
+	psq_l 		fr11, 40(r4), 0, 0
+	ps_madds1 	fr15, fr9, fr2, fr15
+	psq_l 		fr4, 32(r3), 0, 0
+	psq_l 		fr5, 40(r3), 0, 0
+	ps_madds0 	fr12, fr10, fr1, fr12
+	ps_madds0 	fr13, fr11, fr1, fr13
+	ps_madds0 	fr14, fr10, fr3, fr14
+	ps_madds0 	fr15, fr11, fr3, fr15
+	psq_st 		fr12, 0(r5), 0, 0
+	ps_muls0 	fr2, fr6, fr4
+	ps_madds1 	fr13, fr31, fr1, fr13
+	ps_muls0 	fr0, fr7, fr4
+	psq_st 		fr14, 16(r5), 0, 0
+	ps_madds1 	fr15, fr31, fr3, fr15
+	psq_st 		fr13, 8(r5), 0, 0
+	ps_madds1 	fr2, fr8, fr4, fr2
+	ps_madds1 	fr0, fr9, fr4, fr0
+	ps_madds0 	fr2, fr10, fr5, fr2
+	lfd 	fr14, 8(r1)
+	psq_st 		fr15, 24(r5), 0, 0
+	ps_madds0 	fr0, fr11, fr5, fr0
+	psq_st 		fr2, 32(r5), 0, 0
+	ps_madds1 	fr0, fr31, fr5, fr0
+	lfd 	fr15, 0x10(r1)
+	psq_st 		fr0, 40(r5), 0, 0
+	lfd 	fr31, 0x28(r1)
+	addi 	r1, r1, 0x40
+	blr 
 
 	.globl ps_guMtxIdentity
 	//r3 == mtx
@@ -340,19 +342,19 @@ ps_guMtxApplyScale:
 	.globl ps_guMtxTrans
 	//r3 = mtx,fr1 = xT,fr2 = yT,fr3 = zT
 ps_guMtxTrans:
-	lfs		fr4,Unit01@sdarel(r13)
-	lfs		fr5,Unit01+4@sdarel(r13)
-	stfs		fr4,16(r3)
-	stfs		fr1,12(r3)
-	stfs		fr2,28(r3)
-	psq_st		fr4,4(r3),0,0
-	psq_st		fr4,32(r3),0,0
-	stfs		fr5,20(r3)
-	stfs		fr4,24(r3)
-	stfs		fr5,40(r3)
-	stfs		fr3,44(r3)
-	stfs		fr5,0(r3)
-	blr
+	lfs 		fr0, Unit01@sdarel(r13)
+	lfs 		fr4, Unit01+0x4@sdarel(r13)
+	stfs 		fr1, 0xc(r3)
+	stfs 		fr2, 0x1c(r3)
+	psq_st 		fr0, 4(r3), 0, 0
+	psq_st 		fr0, 32(r3), 0, 0
+	stfs 		fr0, 0x10(r3)
+	stfs 		fr4, 0x14(r3)
+	stfs 		fr0, 0x18(r3)
+	stfs 		fr4, 0x28(r3)
+	stfs 		fr3, 0x2c(r3)
+	stfs 		fr4, 0(r3)
+	blr 
 
 	.globl ps_guMtxTransApply
 	//r3 = src,r4 = dst,fr1 = xT,fr2 = yT,fr3 = zT

@@ -56,7 +56,23 @@ distribution.
 	stw      r12,GPR12_OFFSET(sp);	\
 	stw      r13,GPR13_OFFSET(sp);	\
 	stw      r14,GPR14_OFFSET(sp);	\
-	stw      r15,GPR15_OFFSET(sp)
+	stw      r15,GPR15_OFFSET(sp);	\
+	stfd	 f0, FPR0_OFFSET(sp);	\
+	stfd	 f1, FPR1_OFFSET(sp);	\
+	stfd	 f2, FPR2_OFFSET(sp);	\
+	stfd	 f3, FPR3_OFFSET(sp);	\
+	stfd	 f4, FPR4_OFFSET(sp);	\
+	stfd	 f5, FPR5_OFFSET(sp);	\
+	stfd	 f6, FPR6_OFFSET(sp);	\
+	stfd	 f7, FPR7_OFFSET(sp);	\
+	stfd	 f8, FPR8_OFFSET(sp);	\
+	stfd	 f9, FPR9_OFFSET(sp);	\
+	stfd	 f10, FPR10_OFFSET(sp);	\
+	stfd	 f11, FPR11_OFFSET(sp);	\
+	stfd	 f12, FPR12_OFFSET(sp);	\
+	stfd	 f13, FPR13_OFFSET(sp);	\
+	stfd	 f14, FPR14_OFFSET(sp);	\
+	stfd	 f15, FPR15_OFFSET(sp)
 		
 #define EXCEPTION_EPILOG			\
 	lwz		r4,GQR0_OFFSET(sp);		\
@@ -85,19 +101,35 @@ distribution.
 	lwz		r8,GPR8_OFFSET(sp);		\
 	lwz		r7,GPR7_OFFSET(sp);		\
 	lwz		r6,GPR6_OFFSET(sp);		\
-	lwz		r5,GPR5_OFFSET(sp)
+	lwz		r5,GPR5_OFFSET(sp);		\
+	lfd	 	f0, FPR0_OFFSET(sp);	\
+	lfd	 	f1, FPR1_OFFSET(sp);	\
+	lfd	 	f2, FPR2_OFFSET(sp);	\
+	lfd	 	f3, FPR3_OFFSET(sp);	\
+	lfd	 	f4, FPR4_OFFSET(sp);	\
+	lfd	 	f5, FPR5_OFFSET(sp);	\
+	lfd	 	f6, FPR6_OFFSET(sp);	\
+	lfd	 	f7, FPR7_OFFSET(sp);	\
+	lfd	 	f8, FPR8_OFFSET(sp);	\
+	lfd	 	f9, FPR9_OFFSET(sp);	\
+	lfd	 	f10, FPR10_OFFSET(sp);	\
+	lfd	 	f11, FPR11_OFFSET(sp);	\
+	lfd	 	f12, FPR12_OFFSET(sp);	\
+	lfd	 	f13, FPR13_OFFSET(sp);	\
+	lfd	 	f14, FPR14_OFFSET(sp);	\
+	lfd	 	f15, FPR15_OFFSET(sp)
 
 	.extern c_irqdispatcher
 	.globl	irq_exceptionhandler
 irq_exceptionhandler:
 	stwu	sp,-EXCEPTION_FRAME_END(sp)		//now we're able to adjust the stackpointer with it's cached address
 
-	EXCEPTION_PROLOG
-
 	mfmsr	r3
 	ori		r3,r3,MSR_RI
 	mtmsr	r3
 	isync
+
+	EXCEPTION_PROLOG
 
 	addi	r14,sp,0
 	lis		r15,_thread_dispatch_disable_level@ha
