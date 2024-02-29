@@ -13,8 +13,8 @@ endif
 export PATH	:=	$(DEVKITPPC)/bin:$(PATH)
 
 export LIBOGC_MAJOR	:= 2
-export LIBOGC_MINOR	:= 4
-export LIBOGC_PATCH	:= 1
+export LIBOGC_MINOR	:= 5
+export LIBOGC_PATCH	:= 0
 
 include	$(DEVKITPPC)/base_rules
 
@@ -154,7 +154,7 @@ OGCOBJ		:=	\
 			console_font_8x16.o timesupp.o lock_supp.o usbgecko.o usbmouse.o \
 			sbrk.o malloc_lock.o kprintf.o stm.o aes.o sha.o ios.o es.o isfs.o usb.o network_common.o \
 			sdgecko_io.o sdgecko_buf.o gcsd.o argv.o network_wii.o wiisd.o conf.o usbstorage.o \
-			texconv.o wiilaunch.o
+			texconv.o wiilaunch.o sys_report.o
 
 #---------------------------------------------------------------------------------
 MODOBJ		:=	freqtab.o mixer.o modplay.o semitonetab.o gcmodplay.o
