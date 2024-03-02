@@ -2912,7 +2912,6 @@ s32 DVD_Cancel(dvdcmdblk *block)
 		switch (state) {
 			case DVD_STATE_FATAL_ERROR:
 			case DVD_STATE_END:
-			case DVD_STATE_BUSY:
 			case DVD_STATE_CANCELED:
 				_CPU_ISR_Restore(level);
 				return 0;
