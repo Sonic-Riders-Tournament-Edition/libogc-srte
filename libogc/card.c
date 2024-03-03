@@ -342,7 +342,7 @@ static void __card_updateiconoffsets(card_direntry *entry,card_stat *stats)
 {
 	s32 i;
 	u8 bnrfmt,nicons;
-	u32 iconaddr,iconbase;
+	u32 iconaddr;
 
 	iconaddr = entry->icon_addr;
 	if(iconaddr==-1) {
@@ -380,30 +380,22 @@ static void __card_updateiconoffsets(card_direntry *entry,card_stat *stats)
 		if(stats->iconfmt[i]) nicons++;
 	}
 
-	iconbase = iconaddr;
 	for(i=0;i<CARD_MAXICONS;i++) {
 		switch(stats->iconfmt[i]) {
-			case 1:			//CARD_ICON_CI with shared palette							
+			case 1:			//CARD_ICON_CI with own palette						
 				stats->offset_icon[i] = iconaddr;
-				stats->offset_icon_tlut[i] = iconbase + (nicons*1024);
-				iconaddr += 1024;
+				stats->offset_icon_tlut[i] = iconaddr + 1024;
+				iconaddr += (1024 + 512);
 				break;
 			case 2:			//CARD_ICON_RGB
 				stats->offset_icon[i] = iconaddr;
 				stats->offset_icon_tlut[i] = -1;
 				iconaddr += 3072;
 				break;
-			case 3:			//CARD_ICON_CI with own palette
-				stats->offset_icon[i] = iconaddr;
-				stats->offset_icon_tlut[i] = iconaddr + 1024;
-				iconaddr += 1536;
-				break;
 			default:		//CARD_ICON_NONE
 				stats->offset_icon[i] = -1;
 				stats->offset_icon_tlut[i] = -1;
 				break;
-
-
 		}
 	}
 	stats->offset_data = iconaddr;
