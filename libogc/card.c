@@ -406,7 +406,7 @@ static void __card_updateiconoffsets(card_direntry *entry,card_stat *stats)
 
 		}
 	}
-//	stats->offset_data = iconaddr;
+	stats->offset_data = iconaddr;
 }
 
 static s32 __card_getstatusex(s32 chn, s32 fileno, card_direntry *entry)
@@ -2609,7 +2609,7 @@ s32 CARD_ReadAsync(card_file *file,void *buffer,u32 len,u32 offset,cardcallback 
 
 	if(len>=(card->sector_size-(file->offset&(card->sector_size-1)))) len = (card->sector_size-(file->offset&(card->sector_size-1)));
 	
-	if((ret=ogc_card_read(file->chn,(file->iblock*card->sector_size),len,buffer,__read_callback))<0) {
+	if((ret=ogc_card_read(file->chn,(file->iblock*card->sector_size)+(file->offset&(card->sector_size-1)),len,buffer,__read_callback))<0) {
 		__card_putcntrlblock(card,ret);
 		return ret;
 	}
@@ -2829,7 +2829,7 @@ s32 CARD_Open(s32 chn,const char *filename,card_file *file)
 	file->chn = chn;
 	file->filenum = fileno;
 	file->offset = 0;
-	file->len = dirblock->entries[fileno].length*card->sector_size;
+	// file->len = dirblock->entries[fileno].length*card->sector_size;
 	file->iblock = dirblock->entries[fileno].block;	
 
 	__card_putcntrlblock(card,CARD_ERROR_READY);
@@ -3259,20 +3259,21 @@ s32 CARD_SetGamecode(const char *gamecode)
 	return CARD_ERROR_READY;
 }
 
-s32 CARD_GetSerialNo(s32 chn,u32 *serial1,u32 *serial2)
+s32 CARD_GetSerialNo(s32 chn,u64 *serial)
 {
 	s32 ret;
 	card_block *card = NULL;
 	struct card_header *header;
 
 	if(chn<EXI_CHANNEL_0 || chn>=EXI_CHANNEL_2) return CARD_ERROR_NOCARD;
-	if(serial1 == NULL || serial2 == NULL) return CARD_ERROR_FATAL_ERROR;
+	if(serial == NULL) return CARD_ERROR_FATAL_ERROR;
 	if((ret=__card_getcntrlblock(chn,&card))<0) return ret;
 
 	header = card->workarea;
 
-	*serial1 = header->serial[0]^header->serial[2]^header->serial[4]^header->serial[6];
-	*serial2 = header->serial[1]^header->serial[3]^header->serial[5]^header->serial[7];
+	u64 serial1 = header->serial[0]^header->serial[2]^header->serial[4]^header->serial[6];
+	u32 serial2 = header->serial[1]^header->serial[3]^header->serial[5]^header->serial[7];
+	*serial = (serial1 << 32) | serial2;
 
 	return __card_putcntrlblock(card,ret);
 }
@@ -3296,7 +3297,7 @@ s32 CARD_GetFreeBlocks(s32 chn, u32* bytesNotUsed, u32* filesNotUsed)
 
 	_CPU_ISR_Disable(level);
 
-	*bytesNotUsed = card->cmd_len * fatblock->freeblocks;
+	*bytesNotUsed = card->sector_size * fatblock->freeblocks;
 	*filesNotUsed = 0;
 
 	for (u32 i = 0; i < CARD_MAXFILES; i++)
@@ -3318,4 +3319,151 @@ u32 CARD_GetXferredBytes(s32 chn)
 {
 	card_block *card = &cardmap[chn];
 	return card->transfer_cnt;
+}
+
+s32 CARD_CheckExAsync(s32 chn, s32* xferBytes, cardcallback callback)
+{
+	if (xferBytes) *xferBytes = 0;
+
+	card_block *card = NULL;
+	s32 ret;
+	if ((ret = __card_getcntrlblock(chn, &card)) < 0) return ret;
+
+	bool updatefatchecksum = false;
+	bool updatedir = false;
+	bool updatefat = false;
+
+	u32 currdir;
+	u32 currfat;
+	struct card_dat *dirblock[2];
+	struct card_bat *fatblock[2];
+
+	s32 badamount = __card_checkdir(card, &currdir) + __card_checkfat(card, &currfat);
+
+	dirblock[0] = card->workarea + CARD_SYSDIR;
+	dirblock[1] = card->workarea + CARD_SYSDIR_BACK;
+	fatblock[0] = card->workarea + CARD_SYSBAT;
+	fatblock[1] = card->workarea + CARD_SYSBAT_BACK;
+
+	if (badamount > 1) {
+		return __card_putcntrlblock(card, CARD_ERROR_BROKEN);
+	} else if (badamount == 1) {
+		if (card->curr_dir == NULL) {
+			card->curr_dir = dirblock[currdir];
+			memcpy(dirblock[currdir], dirblock[currdir ^ 1], 8192);
+			updatedir = true;
+		} else {
+			card->curr_fat = fatblock[currfat];
+			memcpy(fatblock[currfat], fatblock[currfat ^ 1], 8192);
+			updatefat = true;
+		}
+	}
+
+	struct card_bat *currfatblock = fatblock[currfat ^ 1];
+	memset(currfatblock, 0, 8192);
+
+	for (u32 i = 0; i < CARD_MAXFILES; i++) {
+		card_direntry *entry = &card->curr_dir->entries[i];
+
+		if (entry->gamecode[0] == 0xFF) continue;
+
+		u16 currlength = 0;
+		u16 block = entry->block;
+
+		while (block != 0xFFFF && currlength < entry->length) {
+			if (block < CARD_SYSAREA || block >= card->blocks) {
+				return __card_putcntrlblock(card, CARD_ERROR_BROKEN);
+			}
+
+			u16 fatindex = block - CARD_SYSAREA;
+			u16 updatedfat = currfatblock->fat[fatindex] + 1;
+			currfatblock->fat[fatindex] = updatedfat;
+			if (updatedfat > 1) {
+				return __card_putcntrlblock(card, CARD_ERROR_BROKEN);
+			}
+
+			currlength++;
+			block = __card_getbatblock(card)->fat[fatindex];
+		}
+
+		if (entry->length != currlength || block != 0xFFFF) {
+			return __card_putcntrlblock(card, CARD_ERROR_BROKEN);
+		}
+	}
+
+
+	u16 freeblocks = 0;
+	u32 blockcount = CARD_SYSAREA;
+	u32 fati = 0;
+	while (blockcount < card->blocks) {
+		struct card_bat *otherfatblock = __card_getbatblock(card);
+		if (currfatblock->fat[fati] == 0) {
+			if (otherfatblock->fat[fati] != 0) {
+				currfatblock->fat[fati] = 0;
+				updatefatchecksum = true;
+			}
+			freeblocks++;
+		} else {
+			u16 fatval = otherfatblock->fat[fati];
+			if ((fatval < CARD_SYSAREA || fatval >= card->blocks) && fatval != 0xFFFF) {
+				return __card_putcntrlblock(card, CARD_ERROR_BROKEN);
+			}
+		}
+		
+		fati++;
+		blockcount++;
+	}
+
+	if (freeblocks != __card_getbatblock(card)->freeblocks) {
+		__card_getbatblock(card)->freeblocks = freeblocks;
+		updatefatchecksum = true;
+	}
+
+	if (updatefatchecksum) {
+		struct card_bat *batblock = __card_getbatblock(card);
+		batblock->chksum1 = 0;
+		batblock->chksum2 = 0;
+		__card_checksum((u16*)batblock, 8188, &batblock->chksum1, &batblock->chksum2);
+	}
+
+	memcpy(fatblock[currfat ^ 1], fatblock[currfat], 8192);
+
+	if (updatedir) {
+		if (xferBytes) *xferBytes = 8192;
+
+		return __card_updatedir(chn, callback);
+	}
+
+	if (updatefat || updatefatchecksum) {
+		if (xferBytes) *xferBytes = 8192;
+
+		return __card_updatefat(chn, __card_getbatblock(card), callback);
+	}
+
+	__card_putcntrlblock(card, CARD_ERROR_READY);
+	if (callback) {
+		u32 level;
+		_CPU_ISR_Disable(level);
+
+		callback(chn, CARD_ERROR_READY);
+
+		_CPU_ISR_Restore(level);
+	}
+
+	return CARD_ERROR_READY;
+}
+
+s32 CARD_CheckAsync(s32 chn, cardcallback callback)
+{
+	s32 xferBytes;
+	return CARD_CheckExAsync(chn, &xferBytes, callback);
+}
+
+s32 CARD_Check(s32 chn)
+{
+	s32 xferBytes;
+	s32 result = CARD_CheckExAsync(chn, &xferBytes, ogc_card_synccallback);
+	if (result < 0) return result;
+
+	return ogc_card_sync(chn);
 }
