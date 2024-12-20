@@ -400,6 +400,7 @@ void c_guMtxRotTrig(Mtx mt,const char axis,f32 sinA,f32 cosA);
 void c_guMtxRotAxisRad(Mtx mt,guVector *axis,f32 rad);
 void c_guMtxReflect(Mtx m,const guVector *p,const guVector *n);
 void c_guMtxQuat(Mtx m,const guQuaternion *a);
+void c_guMtx44Concat(const Mtx44 a,const Mtx44 b,Mtx44 ab);
 
 #ifdef GEKKO
 void ps_guMtxIdentity( Mtx mt);
@@ -467,6 +468,8 @@ void ps_guMtx44MultVec(const Mtx44 m, const guVector *src, guVector *dst);
 #define guMtxRotAxisRad			c_guMtxRotAxisRad
 #define guMtxReflect			c_guMtxReflect
 #define guMtxQuat				c_guMtxQuat
+
+#define guMtx44Concat			c_guMtx44Concat
 
 #else //MTX_USE_C
 
