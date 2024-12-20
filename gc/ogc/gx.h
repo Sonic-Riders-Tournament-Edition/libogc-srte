@@ -1349,6 +1349,8 @@ typedef GXTexRegion* (*GXTexRegionCallback)(GXTexObj *obj,u8 mapid);
  */
 typedef GXTlutRegion* (*GXTlutRegionCallback)(u32 tlut_name);
 
+typedef u8 GXVtxFmt;
+
 extern WGPipe* const wgPipe;
 /*!
  * \fn GXFifoObj* GX_Init(void *base,u32 size)

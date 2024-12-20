@@ -13,8 +13,11 @@
 u32 MALLOC_MEM2 __attribute__((weak)) = 1;
 #endif
 
-void* _sbrk_r( struct _reent *ptr, ptrdiff_t incr)
+void* _sbrk_r(struct _reent *ptr, ptrdiff_t incr)
 {
+	// align increment to 32 bit, otherwise malloc will fail
+	incr = (incr + 31) & ~31;
+
 	u32 level;
 	char *heap_end = 0;
 	char *prev_heap = 0;

@@ -390,7 +390,7 @@ void ps_guMtxRotRad(register Mtx mt,register const char axis,register f32 rad)
 	ps_guMtxRotTrig(mt,axis,sinA,cosA);
 }
 
-void ps_guMtxRotAxisRad(Mtx mt,guVector *axis,f32 rad)
+void ps_guMtxRotAxisRad(Mtx mt,const guVector *axis,f32 rad)
 {
 	f32 sinT,cosT;
  

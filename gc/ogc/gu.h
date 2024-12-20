@@ -416,7 +416,7 @@ void ps_guMtxTransApply(const Mtx src, Mtx dst, f32 xT, f32 yT, f32 zT);
 void ps_guMtxApplyTrans(const Mtx src, Mtx dst, f32 xT, f32 yT, f32 zT);
 void ps_guMtxRotRad( Mtx mt, const char axis, f32 rad);
 void ps_guMtxRotTrig( Mtx mt, const char axis, f32 sinA, f32 cosA);
-void ps_guMtxRotAxisRad( Mtx mt, guVector *axis, f32 tmp0);
+void ps_guMtxRotAxisRad( Mtx mt, const guVector *axis, f32 tmp0);
 void ps_guMtxReflect( Mtx m, const guVector *p, const guVector *n);
 void ps_guMtxQuat(Mtx m, const guQuaternion *a);
 void ps_guMtxMultVec(const Mtx m, const guVector *src, guVector *dst);
