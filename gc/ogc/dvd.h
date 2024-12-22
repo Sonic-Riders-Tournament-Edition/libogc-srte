@@ -363,6 +363,7 @@ u32 DVD_GetTransferredSize(dvdfileinfo *info);
 bool DVD_ReadAsyncPrio(dvdfileinfo *info, void *buf, u32 length, u32 offset, dvdcbcallback cb, s32 prio);
 bool DVD_Close(dvdfileinfo *info);
 bool DVD_CheckDisk(void);
+bool DVD_ChangeDir(const char *dirName);
 
 #define DVD_SetUserData(block, data) ((block)->usrdata = (data))
 #define DVD_GetUserData(block)       ((block)->usrdata)

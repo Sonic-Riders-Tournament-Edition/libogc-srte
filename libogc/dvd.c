@@ -135,6 +135,8 @@ distribution.
 #define DVD_FST_FILE 					0x00
 #define DVD_FST_DIRECTORY 				0x01
 
+#define DVD_FST_ROOT_DIRECTORY			0
+
 #define cpu_to_le32(x)					(((x>>24)&0x000000ff) | ((x>>8)&0x0000ff00) | ((x<<8)&0x00ff0000) | ((x<<24)&0xff000000))
 #define dvd_may_retry(s)				(DVD_STATUS(s) == DVD_STATUS_READY || DVD_STATUS(s) == DVD_STATUS_DISK_ID_NOT_READ)
 
@@ -160,12 +162,12 @@ typedef struct _dvdfst {
 	u32 fileNameOffset : 24;
 	union {
 		u32 fileOffset; 	// for files
-		u32 parentOffset; 	// for dirs
+		u32 parentIdx; 	// for dirs
 	};
 	union {
 		u32 fileLength; 	// for files
 		u32 numEntries; 	// for root dir entry
-		u32 nextOffset; 	// for dirs
+		u32 nextFolderIdx; 	// for dirs
 	};
 } dvdfst;
 
@@ -218,6 +220,8 @@ static dvdstatecb __dvd_laststate = NULL;
 static dvdcmdblk *__dvd_executing = NULL;
 static void *__dvd_usrdata = NULL;
 static dvddiskid *__dvd_diskID = (dvddiskid*)0x80000000;
+
+static u32 __dvd_currdir = 0;
 static dvdfst *__dvd_fst_start = NULL;
 static const char *__dvd_fst_filename_table = NULL;
 
@@ -2772,32 +2776,144 @@ const DISC_INTERFACE __io_gcdvd = {
 	dvdio_Shutdown
 };
 
-s32 DVD_ConvertPathToEntrynum(const char *path)
+static bool __dvd_checkentryfilename(const char *path, const u32 start, const u32 end, const dvdfst *entry)
 {
-	if (strlen(path) > 100) return -1;
-
-	char searchPath[100];
-	strcpy(searchPath, path);
-	for (char *p = searchPath; *p; ++p) *p = tolower(*p);
+	const char *entryPath = __dvd_fst_filename_table + entry->fileNameOffset;
+	u32 entryPathIdx = 0;
 	
-	dvdfst *fst = __dvd_fst_start + 1;
-	u32 entries = __dvd_fst_start->numEntries;
+	for (u32 i = start; i < end; i++, entryPathIdx++) {
+		char pathChar = path[i];
+		char entryChar = entryPath[entryPathIdx];
 
-	for (u32 i = 1; i < entries; i++, fst++)
-	{
-		const char *entryFileName = __dvd_fst_filename_table + fst->fileNameOffset;
-		if (strlen(entryFileName) > 100) continue;
+		if (!pathChar || !entryChar)
+			return false;
 
-		char entryPath[100];
-		strcpy(entryPath, entryFileName);
-		for (char *p = entryPath; *p; ++p) *p = tolower(*p);
+		pathChar = tolower(pathChar);
+		entryChar = tolower(entryChar);
 
-		if (strcmp(searchPath, entryPath) == 0)
-		{
-			return i;
+		if (pathChar != entryChar)
+			return false;
+	}
+	
+	return true;
+}
+
+static s32 __dvd_getdir(const char *path, const u32 start, const u32 end, u32 curDir)
+{
+	dvdfst *dir = __dvd_fst_start + curDir;
+	
+	// check if current, parent or no directory is specified
+	const u32 len = end - start;
+
+	if (len == 0) {
+		return -1; // something most likely went wrong
+	} else if (len == 1) {
+		if (path[0] == '.')
+			return (s32)curDir;
+	} else if (len == 2) {
+		if (path[0] == '.' && path[1] == '.')
+			return (s32)dir->parentIdx;
+	}
+	
+	const u32 nextDir = dir->nextFolderIdx;
+
+	curDir++;
+
+	// iterate through all directories in the current one to find the directory
+	while (curDir < nextDir) {
+		dir = __dvd_fst_start + curDir;
+
+		if (dir->flag != DVD_FST_DIRECTORY) {
+			curDir++;
+			continue;
+		}
+
+		if (__dvd_checkentryfilename(path, start, end, dir))
+			return (s32)curDir;
+
+		curDir = dir->nextFolderIdx;
+	}
+
+	return -1;
+}
+
+static void __dvd_changediridx(const char *path, const char *nameStart, const char *nameEnd, u32 *dirIdx)
+{
+	const u32 nameStartIdx = nameStart - path;
+	const u32 nameEndIdx = nameEnd - path;
+
+	*dirIdx = __dvd_getdir(path, nameStartIdx, nameEndIdx, *dirIdx);
+}
+
+static s32 __dvd_getdirfrompath(const char *path, const bool isDirPath, const char **fileNameStart, const char **fileNameEnd)
+{
+	u32 curDirIdx = __dvd_currdir;
+	const char *curPath = path;
+
+	if (path[0] == '/') {
+		curDirIdx = DVD_FST_ROOT_DIRECTORY;
+		curPath++;
+	}
+
+	char curChar = *curPath;
+	const char *nameStart = curPath;
+
+	// change to the specified directory in the provided path, if necessary
+	while (curChar) {
+		if (curChar == '/') {
+			// change directory
+			__dvd_changediridx(path, nameStart, curPath, &curDirIdx);
+
+			if (curDirIdx == -1)
+				return -1;
+
+			// set next name start pointer
+			nameStart = curPath + 1;
+		}
+
+		curPath++;
+		curChar = *curPath;
+	}
+
+	if (isDirPath) {
+		// change to the last specified dir (wasn't done in the while loop)
+		__dvd_changediridx(path, nameStart, curPath, &curDirIdx);
+	} else {
+		// give the file name parameters at the end of the path
+		if (fileNameStart && fileNameEnd) {
+			*fileNameStart = nameStart;
+			*fileNameEnd = curPath;
 		}
 	}
 
+	return curDirIdx;
+}
+
+s32 DVD_ConvertPathToEntrynum(const char *path)
+{
+	const char *nameStart;
+	const char *nameEnd;
+	s32 curDirIdx = __dvd_getdirfrompath(path, false, &nameStart, &nameEnd);
+
+	if (curDirIdx == -1)
+		return -1;
+
+	// check if file exists in the directory
+	const u32 nameStartIdx = nameStart - path;
+	const u32 nameEndIdx = nameEnd - path;
+	const dvdfst *curDir = __dvd_fst_start + curDirIdx;
+	const u32 nextDir = curDir->nextFolderIdx;
+
+	for (u32 i = curDirIdx + 1; i < nextDir; i++) {
+		const dvdfst *entry = __dvd_fst_start + i;
+
+		if (entry->flag == DVD_FST_DIRECTORY)
+			continue;
+
+		if (__dvd_checkentryfilename(path, nameStartIdx, nameEndIdx, entry))
+			return (s32)i;
+	}
+	
 	return -1;
 }
 
@@ -3006,4 +3122,21 @@ bool DVD_CheckDisk(void)
 
 	_CPU_ISR_Restore(level);
 	return ret;
+}
+
+bool DVD_ChangeDir(const char *dirName)
+{
+	if (dirName[0] == '/' && dirName[1] == 0) {
+		__dvd_currdir = DVD_FST_ROOT_DIRECTORY;
+		return true;
+	}
+
+	const s32 dirIdx = __dvd_getdirfrompath(dirName, true, NULL, NULL);
+
+	if (dirIdx == -1)
+		return false;
+
+	__dvd_currdir = dirIdx;
+
+	return true;
 }
