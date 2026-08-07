@@ -70,7 +70,7 @@ distribution.
 #if defined(HW_RVL)
 #define SYSMEM2_SIZE				0x04000000
 #endif
-#define KERNEL_HEAP					(1*1024*1024)
+#define KERNEL_HEAP					(0.5*1024*1024)
 
 // SRAM bits
 #define SRAM_VIDEO_MODE_BITS		0x03
@@ -996,9 +996,9 @@ void __SYS_SetBootTime(void)
 
 	if(__SYS_GetRTC(&gctime)!=1)
 		return;
-	
+
 #if defined(HW_RVL)
-	if(CONF_GetCounterBias(&bias) >= 0) 
+	if(CONF_GetCounterBias(&bias) >= 0)
 		gctime += bias;
 #else
 	gctime += SYS_GetCounterBias();
